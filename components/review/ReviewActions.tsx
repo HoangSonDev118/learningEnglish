@@ -16,30 +16,30 @@ const RATINGS: {
 }[] = [
   {
     rating: "again",
-    label: "Again",
+    label: "Hoc lai",
     shortcut: "1",
-    description: "Forgot",
+    description: "Quen mat",
     variant: "again",
   },
   {
     rating: "hard",
-    label: "Hard",
+    label: "Kho",
     shortcut: "2",
-    description: "Recalled with effort",
+    description: "Nho duoc nhung hoi kho",
     variant: "hard",
   },
   {
     rating: "good",
-    label: "Good",
+    label: "Tot",
     shortcut: "3",
-    description: "Recalled correctly",
+    description: "Nho dung",
     variant: "good",
   },
   {
     rating: "easy",
-    label: "Easy",
+    label: "De",
     shortcut: "4",
-    description: "Very easy",
+    description: "Rat de",
     variant: "easy",
   },
 ];
@@ -48,7 +48,7 @@ export function ReviewActions({ onRate }: Props) {
   return (
     <div className="w-full max-w-2xl mx-auto mt-6">
       <p className="text-center text-xs text-zinc-400 mb-3 font-medium">
-        How well did you remember?
+        Ban nho tot den muc nao?
       </p>
       <div className="grid grid-cols-4 gap-2 sm:gap-3">
         {RATINGS.map((r) => (

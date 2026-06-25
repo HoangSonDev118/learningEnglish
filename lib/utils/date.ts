@@ -27,9 +27,9 @@ export function formatRelativeDate(dateString: string): string {
   const diffMs = date.getTime() - now.getTime();
   const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
-  if (diffDays <= 0) return "Due now";
-  if (diffDays === 1) return "Tomorrow";
-  if (diffDays < 7) return `In ${diffDays} days`;
-  if (diffDays < 30) return `In ${Math.ceil(diffDays / 7)} weeks`;
+  if (diffDays <= 0) return "Den han";
+  if (diffDays === 1) return "Ngay mai";
+  if (diffDays < 7) return `Sau ${diffDays} ngay`;
+  if (diffDays < 30) return `Sau ${Math.ceil(diffDays / 7)} tuan`;
   return formatDate(dateString);
 }

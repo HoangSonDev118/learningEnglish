@@ -15,7 +15,7 @@ export function parseVocabText(rawText: string): ParseResult {
       invalidLines.push({
         lineNumber: i + 1,
         content: line,
-        reason: 'Missing ":" separator',
+        reason: 'Thieu dau ":" de phan cach',
       });
       continue;
     }
@@ -27,7 +27,7 @@ export function parseVocabText(rawText: string): ParseResult {
       invalidLines.push({
         lineNumber: i + 1,
         content: line,
-        reason: "Word is empty",
+        reason: "Tu tieng Anh dang rong",
       });
       continue;
     }
@@ -36,7 +36,7 @@ export function parseVocabText(rawText: string): ParseResult {
       invalidLines.push({
         lineNumber: i + 1,
         content: line,
-        reason: "Meaning is empty",
+        reason: "Nghia tieng Viet dang rong",
       });
       continue;
     }

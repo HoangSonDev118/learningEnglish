@@ -1,14 +1,13 @@
 "use client";
 
-import { useVocab } from "@/context/VocabContext";
+import { VocabularyCard } from "@/types/vocab";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatRelativeDate } from "@/lib/utils/date";
 import { Clock, ArrowRight } from "lucide-react";
 import Link from "next/link";
 
-export function DueCardsPanel() {
-  const { dueCards } = useVocab();
+export function DueCardsPanel({ dueCards }: { dueCards: VocabularyCard[] }) {
 
   if (dueCards.length === 0) return null;
 
@@ -21,14 +20,14 @@ export function DueCardsPanel() {
           <div className="flex items-center gap-2">
             <Clock className="h-4 w-4 text-red-500" />
             <p className="text-sm font-semibold text-zinc-700">
-              Due Now ({dueCards.length})
+              Den han hien tai ({dueCards.length})
             </p>
           </div>
           <Link
             href="/review"
             className="flex items-center gap-1 text-xs text-violet-600 hover:text-violet-700 font-medium transition-colors"
           >
-            Review all <ArrowRight className="h-3 w-3" />
+            On tap tat ca <ArrowRight className="h-3 w-3" />
           </Link>
         </div>
         <div className="space-y-2">
@@ -47,7 +46,7 @@ export function DueCardsPanel() {
                       : "review"
                   }
                 >
-                  {card.status}
+                  {mapStatusLabel(card.status)}
                 </Badge>
                 <span className="text-sm font-medium text-zinc-800">
                   {card.word}
@@ -60,11 +59,18 @@ export function DueCardsPanel() {
           ))}
           {dueCards.length > 5 && (
             <p className="text-xs text-zinc-400 text-center pt-1">
-              +{dueCards.length - 5} more cards
+              +{dueCards.length - 5} the nua
             </p>
           )}
         </div>
       </CardContent>
     </Card>
   );
+}
+
+function mapStatusLabel(status: VocabularyCard["status"]): string {
+  if (status === "new") return "Moi";
+  if (status === "learning") return "Dang hoc";
+  if (status === "review") return "On tap";
+  return "Da nho";
 }

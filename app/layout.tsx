@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "VocabSRS — Spaced Repetition Vocabulary",
-  description: "Learn English vocabulary with spaced repetition",
+  title: "VocabSRS — Hoc tu vung ngat quang",
+  description: "Hoc tu vung tieng Anh bang phuong phap ngat quang",
 };
 
 export default function RootLayout({
@@ -27,7 +27,7 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="vi"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-zinc-50">

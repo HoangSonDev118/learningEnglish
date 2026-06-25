@@ -12,9 +12,9 @@ export function ReviewProgress({ current, total }: Props) {
     <div className="w-full max-w-2xl mx-auto mb-6">
       <div className="flex items-center justify-between mb-2">
         <p className="text-sm font-medium text-zinc-600">
-          {current} / {total} cards
+          {current} / {total} the
         </p>
-        <p className="text-sm text-zinc-400">{total - current} remaining</p>
+        <p className="text-sm text-zinc-400">Con lai {total - current}</p>
       </div>
       <div className="h-2 rounded-full bg-zinc-100 overflow-hidden">
         <div

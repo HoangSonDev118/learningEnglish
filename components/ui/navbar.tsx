@@ -2,20 +2,36 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { BookOpen, LayoutDashboard, Library, Upload } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
-import { useVocab } from "@/context/VocabContext";
 
 const navItems = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/review", label: "Review", icon: BookOpen },
-  { href: "/import", label: "Import", icon: Upload },
-  { href: "/library", label: "Library", icon: Library },
+  { href: "/", label: "Tong quan", icon: LayoutDashboard },
+  { href: "/review", label: "On tap", icon: BookOpen },
+  { href: "/import", label: "Nhap", icon: Upload },
+  { href: "/library", label: "Thu vien", icon: Library },
 ];
 
 export function Navbar() {
   const pathname = usePathname();
-  const { dueCards } = useVocab();
+  const [dueCount, setDueCount] = useState(0);
+
+  useEffect(() => {
+    let mounted = true;
+    fetch("/api/vocabulary/due")
+      .then((res) => res.json())
+      .then((data) => {
+        if (mounted) setDueCount(Number(data.dueCount ?? 0));
+      })
+      .catch(() => {
+        if (mounted) setDueCount(0);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [pathname]);
 
   return (
     <header className="sticky top-0 z-40 border-b border-zinc-100 bg-white/90 backdrop-blur-sm">
@@ -30,7 +46,7 @@ export function Navbar() {
         <nav className="flex items-center gap-1">
           {navItems.map((item) => {
             const isActive = pathname === item.href;
-            const isDue = item.href === "/review" && dueCards.length > 0;
+            const isDue = item.href === "/review" && dueCount > 0;
             return (
               <Link
                 key={item.href}
@@ -46,7 +62,7 @@ export function Navbar() {
                 <span className="hidden sm:inline">{item.label}</span>
                 {isDue && !isActive && (
                   <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold">
-                    {dueCards.length > 9 ? "9+" : dueCards.length}
+                    {dueCount > 9 ? "9+" : dueCount}
                   </span>
                 )}
               </Link>

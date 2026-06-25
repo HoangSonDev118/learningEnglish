@@ -1,4 +1,4 @@
-import { VocabularyCard, ReviewRating, CardStatus } from "@/types/vocab";
+import { VocabularyCard, ReviewRating, CardStatus, ReviewMode } from "@/types/vocab";
 import { addDaysToNow, addMinutesToNow } from "@/lib/utils/date";
 
 const DEFAULT_EASE_FACTOR = 2.5;
@@ -12,14 +12,32 @@ export function createNewCard(word: string, meaning: string): VocabularyCard {
     word,
     meaning,
     status: "new",
+    reviewMode: "flashcard",
     repetition: 0,
     interval: 0,
     easeFactor: DEFAULT_EASE_FACTOR,
     lapses: 0,
     dueDate: now,
+    typingEnabled: false,
+    masteryScore: 0,
+    correctCount: 0,
+    wrongCount: 0,
     createdAt: now,
     updatedAt: now,
   };
+}
+
+export function isTypingEligible(card: VocabularyCard): boolean {
+  return Boolean(card.typingEnabled) || card.repetition >= 4 || card.status === "mastered";
+}
+
+function computeMasteryScore(card: VocabularyCard): number {
+  const correctCount = card.correctCount ?? 0;
+  const wrongCount = card.wrongCount ?? 0;
+  const repetitionScore = card.repetition * 12;
+  const intervalScore = Math.min(card.interval, 30) * 2;
+  const accuracyScore = Math.max(0, correctCount * 3 - wrongCount * 2);
+  return Math.max(0, Math.min(100, repetitionScore + intervalScore + accuracyScore));
 }
 
 export function applyReview(
@@ -75,7 +93,7 @@ export function applyReview(
     status = "mastered";
   }
 
-  return {
+  const base: VocabularyCard = {
     ...card,
     repetition,
     interval,
@@ -85,6 +103,24 @@ export function applyReview(
     dueDate,
     lastReviewedAt: now,
     updatedAt: now,
+  };
+
+  const nextTypingEnabled = isTypingEligible(base);
+  const nextReviewMode: ReviewMode = nextTypingEnabled ? "mixed" : "flashcard";
+  const nextCorrectCount = (card.correctCount ?? 0) + (rating === "again" ? 0 : 1);
+  const nextWrongCount = (card.wrongCount ?? 0) + (rating === "again" ? 1 : 0);
+
+  return {
+    ...base,
+    reviewMode: nextReviewMode,
+    typingEnabled: nextTypingEnabled,
+    correctCount: nextCorrectCount,
+    wrongCount: nextWrongCount,
+    masteryScore: computeMasteryScore({
+      ...base,
+      correctCount: nextCorrectCount,
+      wrongCount: nextWrongCount,
+    }),
   };
 }
 
