@@ -17,7 +17,7 @@ export default function ImportPage() {
         </Link>
         <h1 className="text-2xl font-bold text-zinc-900">Nhập từ vựng</h1>
         <p className="mt-1 text-sm text-zinc-500">
-          Tải lên file .txt để thêm từ vựng vào bộ học của bạn
+          Tải lên file .txt hoặc .xlsx để thêm từ vựng vào bộ học của bạn
         </p>
       </div>
 
@@ -32,7 +32,7 @@ export default function ImportPage() {
           <p className="text-sm font-semibold text-zinc-700">Hướng dẫn định dạng file</p>
         </div>
         <p className="text-sm text-zinc-500">
-          Mỗi dòng cần theo định dạng:
+          Với file .txt, mỗi dòng cần theo định dạng:
         </p>
         <pre className="rounded-xl bg-zinc-50 p-4 text-xs font-mono text-zinc-700 leading-relaxed overflow-x-auto">
 {`nutrition: dinh dưỡng
@@ -41,6 +41,9 @@ symptom: triệu chứng
 hygiene: vệ sinh
 illness: sự ốm yếu`}
         </pre>
+        <p className="text-sm text-zinc-500">
+          Với file .xlsx: cột A là tiếng Anh, cột B là tiếng Việt (sheet đầu tiên).
+        </p>
         <ul className="text-xs text-zinc-400 space-y-1 list-disc list-inside">
           <li>Mỗi dòng một từ</li>
           <li>Tách tiếng Anh và tiếng Việt bằng dấu hai chấm <code className="bg-zinc-100 px-1 rounded">:</code></li>

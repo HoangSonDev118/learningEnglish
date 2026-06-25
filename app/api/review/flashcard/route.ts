@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { submitFlashcardReview } from "@/lib/vocabulary/vocabulary-service";
+import { sendDueReminderPushIfNeeded } from "@/lib/notifications/web-push";
 import { ReviewRating } from "@/types/vocab";
 
 export async function POST(req: NextRequest) {
@@ -13,6 +14,8 @@ export async function POST(req: NextRequest) {
       cardId: body.cardId,
       rating: body.rating,
     });
+
+    void sendDueReminderPushIfNeeded();
 
     return NextResponse.json({ card });
   } catch (error) {

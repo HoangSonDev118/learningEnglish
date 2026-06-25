@@ -4,6 +4,7 @@ import "./globals.css";
 import { VocabProvider } from "@/context/VocabContext";
 import { Navbar } from "@/components/ui/navbar";
 import { ToastContainer } from "@/components/ui/toast";
+import { WebPushManager } from "@/components/notifications/WebPushManager";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -43,6 +44,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-zinc-50">
         <VocabProvider>
+          <WebPushManager />
           <Navbar />
           <main className="flex-1">{children}</main>
           <ToastContainer />

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { submitTypingReview } from "@/lib/vocabulary/vocabulary-service";
 import { ReviewRating } from "@/types/vocab";
 import { isTypingAnswerCorrect } from "@/lib/srs/typing-review";
+import { sendDueReminderPushIfNeeded } from "@/lib/notifications/web-push";
 
 export async function POST(req: NextRequest) {
   try {
@@ -26,6 +27,8 @@ export async function POST(req: NextRequest) {
       isCorrect,
       ratingIfCorrect: body.ratingIfCorrect,
     });
+
+    void sendDueReminderPushIfNeeded();
 
     return NextResponse.json({
       card: result.card,

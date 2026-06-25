@@ -97,3 +97,32 @@ export const studyStats = pgTable("study_stats", {
     .notNull()
     .defaultNow(),
 });
+
+export const pushSubscriptions = pgTable(
+  "push_subscriptions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    endpoint: text("endpoint").notNull(),
+    p256dh: text("p256dh").notNull(),
+    auth: text("auth").notNull(),
+    expirationTime: timestamp("expiration_time", {
+      withTimezone: true,
+      mode: "date",
+    }),
+    userAgent: text("user_agent"),
+    lastNotifiedAt: timestamp("last_notified_at", {
+      withTimezone: true,
+      mode: "date",
+    }),
+    lastNotifiedDueCount: integer("last_notified_due_count").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    endpointUnique: uniqueIndex("push_subscriptions_endpoint_idx").on(table.endpoint),
+  })
+);

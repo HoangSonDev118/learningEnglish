@@ -34,3 +34,57 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Web Push Notifications (PWA)
+
+App da ho tro Web Push de nhac khi so tu den han on tap lon hon 50.
+
+### 1) Tao VAPID keys
+
+```bash
+npx web-push generate-vapid-keys
+```
+
+Them vao `.env.local`:
+
+```bash
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=...
+VAPID_PRIVATE_KEY=...
+VAPID_SUBJECT=mailto:you@example.com
+```
+
+Tu chon bao mat cron:
+
+```bash
+PUSH_CRON_SECRET=your-secret
+```
+
+### 2) Chay migration
+
+```bash
+npm run db:migrate
+```
+
+Migration moi: `drizzle/0001_push_subscriptions.sql`
+
+### 3) Cron de gui push nen
+
+Da cau hinh cron Vercel trong `vercel.json`:
+
+- `*/30 * * * *` goi `GET /api/cron/push-due-reminder`
+
+Neu ban set `PUSH_CRON_SECRET` hoac `CRON_SECRET`, endpoint cron can secret qua:
+
+- Header `Authorization: Bearer <secret>`
+- Hoac header `x-cron-secret: <secret>`
+- Hoac query `?secret=<secret>`
+
+### 4) Dang ky push tren client
+
+Client se:
+
+- dang ky `public/sw.js`
+- xin quyen thong bao (permission)
+- tao push subscription va gui len server
+
+Khi push den, service worker se hien thong bao va mo `"/review"` khi nguoi dung bam vao thong bao.

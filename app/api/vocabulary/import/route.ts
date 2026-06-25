@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { importVocabularyItems } from "@/lib/vocabulary/vocabulary-service";
+import { sendDueReminderPushIfNeeded } from "@/lib/notifications/web-push";
 
 export async function POST(req: NextRequest) {
   try {
@@ -15,6 +16,9 @@ export async function POST(req: NextRequest) {
       .filter((item) => item.word && item.meaning) as { word: string; meaning: string }[];
 
     const result = await importVocabularyItems(sanitized);
+
+    void sendDueReminderPushIfNeeded();
+
     return NextResponse.json(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Không thể nhập từ vựng";

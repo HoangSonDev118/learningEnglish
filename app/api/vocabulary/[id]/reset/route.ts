@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { resetVocabularyCard } from "@/lib/vocabulary/vocabulary-service";
+import { sendDueReminderPushIfNeeded } from "@/lib/notifications/web-push";
 
 export async function POST(
   _req: Request,
@@ -11,6 +12,9 @@ export async function POST(
     if (!card) {
       return NextResponse.json({ error: "Không tìm thấy từ vựng" }, { status: 404 });
     }
+
+    void sendDueReminderPushIfNeeded();
+
     return NextResponse.json({ card });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Không thể đặt lại từ vựng";
