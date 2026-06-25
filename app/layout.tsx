@@ -6,6 +6,24 @@ import { Navbar } from "@/components/ui/navbar";
 import { ToastContainer } from "@/components/ui/toast";
 import { WebPushManager } from "@/components/notifications/WebPushManager";
 
+const themeInitScript = `(() => {
+  try {
+    const stored = localStorage.getItem("theme-mode");
+    const preferredDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const theme = stored === "dark" || stored === "light"
+      ? stored
+      : (preferredDark ? "dark" : "light");
+
+    if (theme === "dark") {
+      document.documentElement.classList.add("theme-dark");
+    } else {
+      document.documentElement.classList.remove("theme-dark");
+    }
+  } catch {
+    // Ignore storage and media-query errors.
+  }
+})();`;
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -41,7 +59,11 @@ export default function RootLayout({
     <html
       lang="vi"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body className="min-h-full flex flex-col bg-zinc-50">
         <VocabProvider>
           <WebPushManager />

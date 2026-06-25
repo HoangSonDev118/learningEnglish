@@ -9,6 +9,7 @@ import { parseVocabText } from "@/lib/parser/vocab-parser";
 import { ParseResult } from "@/types/vocab";
 import { Upload, FileText, AlertTriangle, CheckCircle, X } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
+import { playClickButtonSound } from "@/lib/utils/click-sound";
 
 export function ImportVocabularyCard() {
   const { showToast } = useVocab();
@@ -303,7 +304,15 @@ export function ImportVocabularyCard() {
             )}
 
             {validCount > 0 ? (
-              <Button onClick={handleImport} className="w-full" size="lg" disabled={isImporting}>
+              <Button
+                onClick={async () => {
+                  playClickButtonSound();
+                  await handleImport();
+                }}
+                className="w-full"
+                size="lg"
+                disabled={isImporting}
+              >
                 {isImporting ? "Đang nhập..." : `Nhập ${validCount} từ vào bộ học`}
               </Button>
             ) : (

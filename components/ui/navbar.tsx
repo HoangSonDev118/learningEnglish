@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { BookOpen, LayoutDashboard, Library, Upload } from "lucide-react";
+import { BookOpen, LayoutDashboard, Library, Moon, Sun, Upload } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
 const navItems = [
@@ -17,6 +17,22 @@ export function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const [dueCount, setDueCount] = useState(0);
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+
+  useEffect(() => {
+    const stored = localStorage.getItem("theme-mode");
+    const preferredDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const nextTheme = stored === "dark" || stored === "light" ? stored : preferredDark ? "dark" : "light";
+    setTheme(nextTheme);
+    document.documentElement.classList.toggle("theme-dark", nextTheme === "dark");
+  }, []);
+
+  function toggleTheme() {
+    const nextTheme = theme === "dark" ? "light" : "dark";
+    setTheme(nextTheme);
+    localStorage.setItem("theme-mode", nextTheme);
+    document.documentElement.classList.toggle("theme-dark", nextTheme === "dark");
+  }
 
   useEffect(() => {
     router.prefetch("/");
@@ -42,9 +58,22 @@ export function Navbar() {
   }, [pathname]);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-zinc-100 bg-white/90 backdrop-blur-sm animate-fade-up">
+    <header
+      className={cn(
+        "sticky top-0 z-40 backdrop-blur-sm animate-fade-up",
+        theme === "dark"
+          ? "border-b border-zinc-800 bg-zinc-950/90"
+          : "border-b border-zinc-100 bg-white/90"
+      )}
+    >
       <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
-        <Link href="/" className="flex items-center gap-2 font-bold text-zinc-900">
+        <Link
+          href="/"
+          className={cn(
+            "flex items-center gap-2 font-bold",
+            theme === "dark" ? "text-zinc-100" : "text-zinc-900"
+          )}
+        >
           <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-600 text-white text-xs">
             V
           </span>
@@ -63,7 +92,9 @@ export function Navbar() {
                   "relative flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium transition-all",
                   isActive
                     ? "bg-violet-600 text-white"
-                    : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
+                    : theme === "dark"
+                      ? "text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100"
+                      : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
                 )}
               >
                 <item.icon className="h-4 w-4" />
@@ -76,6 +107,21 @@ export function Navbar() {
               </Link>
             );
           })}
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className={cn(
+              "ml-1 flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium transition-all",
+              theme === "dark"
+                ? "text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100"
+                : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
+            )}
+            aria-label={theme === "dark" ? "Chuyển sang light mode" : "Chuyển sang dark mode"}
+            title={theme === "dark" ? "Light mode" : "Dark mode"}
+          >
+            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            <span className="hidden sm:inline">{theme === "dark" ? "Light" : "Dark"}</span>
+          </button>
         </nav>
       </div>
     </header>

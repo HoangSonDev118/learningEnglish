@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { PlayCircle, Upload, Sparkles, Library } from "lucide-react";
+import { playClickButtonSound } from "@/lib/utils/click-sound";
 
 type QuickActionsProps = {
   dueCount: number;
@@ -16,7 +17,13 @@ export function QuickActions({ dueCount, hasCards, onLoadDemo }: QuickActionsPro
     <div className="flex flex-wrap gap-3 stagger-in">
       {dueCount > 0 ? (
         <Link href="/review">
-          <Button size="lg" className="gap-2">
+          <Button
+            size="lg"
+            className="gap-2"
+            onClick={() => {
+              playClickButtonSound();
+            }}
+          >
             <PlayCircle className="h-5 w-5" />
             Bắt đầu ôn tập
             <span className="ml-1 rounded-full bg-white/20 px-2 py-0.5 text-xs font-bold">
@@ -38,14 +45,19 @@ export function QuickActions({ dueCount, hasCards, onLoadDemo }: QuickActionsPro
         </Button>
       </Link>
 
-      <Button variant="secondary" size="lg" className="gap-2" onClick={onLoadDemo}>
+      <Button
+        variant="secondary"
+        size="lg"
+        className="quick-action-demo gap-2"
+        onClick={onLoadDemo}
+      >
         <Sparkles className="h-5 w-5" />
         Nạp dữ liệu mẫu
       </Button>
 
       {hasCards && (
         <Link href="/library">
-          <Button variant="ghost" size="lg" className="gap-2">
+          <Button variant="ghost" size="lg" className="quick-action-library gap-2">
             <Library className="h-5 w-5" />
             Xem thư viện
           </Button>

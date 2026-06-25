@@ -2,6 +2,7 @@
 
 import { ReviewRating } from "@/types/vocab";
 import { Button } from "@/components/ui/button";
+import { playClickButtonSound } from "@/lib/utils/click-sound";
 
 type Props = {
   onRate: (rating: ReviewRating) => void;
@@ -25,7 +26,7 @@ const RATINGS: {
     rating: "hard",
     label: "Khó",
     shortcut: "2",
-    description: "Nhớ được nhưng hơi khó",
+    description: "Nhơ nhớ",
     variant: "hard",
   },
   {
@@ -52,24 +53,30 @@ export function ReviewActions({ onRate }: Props) {
       </p>
       <div className="grid grid-cols-4 gap-2 sm:gap-3 stagger-in">
         {RATINGS.map((r) => (
-          <button
+          <Button
             key={r.rating}
-            onClick={() => onRate(r.rating)}
-            className={`
-              flex flex-col items-center gap-1 rounded-2xl border px-2 py-4 text-center
-              transition-all active:scale-95 cursor-pointer select-none
-              ${r.variant === "again" ? "border-red-200 bg-red-50 text-red-700 hover:bg-red-100" : ""}
-              ${r.variant === "hard" ? "border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100" : ""}
-              ${r.variant === "good" ? "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100" : ""}
-              ${r.variant === "easy" ? "border-green-200 bg-green-50 text-green-700 hover:bg-green-100" : ""}
-            `}
+            type="button"
+            variant={r.variant}
+            onClick={() => {
+              playClickButtonSound();
+              onRate(r.rating);
+            }}
+            className={`min-h-24 flex-col items-center gap-1 rounded-2xl px-2 py-3 text-center border-b-[4px] active:border-b-[2px] active:translate-y-[2px] ${
+              r.variant === "again"
+                ? "border-b-red-300"
+                : r.variant === "hard"
+                  ? "border-b-orange-300"
+                  : r.variant === "good"
+                    ? "border-b-blue-300"
+                    : "border-b-green-300"
+            }`}
           >
             <span className="text-base font-bold">{r.label}</span>
             <span className="text-xs opacity-70 hidden sm:block">{r.description}</span>
             <kbd className="mt-1 rounded bg-black/10 px-1.5 py-0.5 text-xs font-mono">
               {r.shortcut}
             </kbd>
-          </button>
+          </Button>
         ))}
       </div>
     </div>
