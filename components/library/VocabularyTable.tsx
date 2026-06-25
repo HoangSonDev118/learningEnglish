@@ -1,86 +1,39 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { CardStatus, VocabularyCard } from "@/types/vocab";
 import { formatRelativeDate } from "@/lib/utils/date";
-import { Search, Trash2 } from "lucide-react";
+import { Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { VocabularyDetailModal } from "@/components/vocabulary/VocabularyDetailModal";
 
-type Filter = "all" | CardStatus | "due";
-
-const FILTERS: { value: Filter; label: string }[] = [
-  { value: "all", label: "Tất cả" },
-  { value: "new", label: "Mới" },
-  { value: "learning", label: "Đang học" },
-  { value: "review", label: "Ôn tập" },
-  { value: "mastered", label: "Đã nhớ" },
-  { value: "due", label: "Đến hạn hôm nay" },
-];
+type VocabularyTableProps = {
+  cards: VocabularyCard[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  onDelete: (card: VocabularyCard) => void;
+  onPageChange: (page: number) => void;
+};
 
 export function VocabularyTable({
   cards,
+  total,
+  page,
+  pageSize,
+  totalPages,
   onDelete,
-}: {
-  cards: VocabularyCard[];
-  onDelete: (card: VocabularyCard) => void;
-}) {
-  const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<Filter>("all");
+  onPageChange,
+}: VocabularyTableProps) {
   const [selectedCard, setSelectedCard] = useState<VocabularyCard | null>(null);
 
-  const now = new Date();
-  const filtered = cards.filter((c) => {
-    const matchSearch =
-      c.word.toLowerCase().includes(search.toLowerCase()) ||
-      c.meaning.toLowerCase().includes(search.toLowerCase());
-
-    const matchFilter =
-      filter === "all" ||
-      (filter === "due" && new Date(c.dueDate) <= now && c.status !== "mastered") ||
-      c.status === filter;
-
-    return matchSearch && matchFilter;
-  });
-
-  if (cards.length === 0) return null;
+  const rangeStart = total === 0 ? 0 : (page - 1) * pageSize + 1;
+  const rangeEnd = Math.min(page * pageSize, total);
 
   return (
     <div className="space-y-4">
-      {/* Search + Filters */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
-          <Input
-            placeholder="Tìm từ hoặc nghĩa..."
-            className="pl-9"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          {FILTERS.map((f) => (
-            <button
-              key={f.value}
-              onClick={() => setFilter(f.value)}
-              className={cn(
-                "rounded-xl px-3 py-1.5 text-xs font-medium transition-all",
-                filter === f.value
-                  ? "bg-violet-600 text-white shadow-sm"
-                  : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
-              )}
-            >
-              {f.label}
-              <span className="ml-1 opacity-70">
-                ({countFilter(cards, f.value, now)})
-              </span>
-            </button>
-          ))}
-        </div>
-      </div>
-
       {/* Table */}
       <div className="overflow-hidden rounded-2xl border border-zinc-100 shadow-sm">
         <table className="w-full text-sm">
@@ -110,17 +63,17 @@ export function VocabularyTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-50">
-            {filtered.length === 0 ? (
+            {cards.length === 0 ? (
               <tr>
                 <td colSpan={7} className="px-4 py-10 text-center text-zinc-400 text-sm">
                   Không có thẻ nào khớp bộ lọc
                 </td>
               </tr>
             ) : (
-              filtered.map((card) => (
+              cards.map((card) => (
                 <tr
                   key={card.id}
-                  className="hover:bg-violet-50/30 transition-colors cursor-pointer animate-fade-up"
+                  className="hover:bg-violet-50/30 transition-colors cursor-pointer"
                   onClick={() => setSelectedCard(card)}
                 >
                   <td className="px-4 py-3 font-semibold text-zinc-900">{card.word}</td>
@@ -158,9 +111,57 @@ export function VocabularyTable({
           </tbody>
         </table>
       </div>
-      <p className="text-xs text-zinc-400 text-right">
-        Hiện {filtered.length}/{cards.length} từ
-      </p>
+
+      {/* Footer: count + pagination */}
+      <div className="flex items-center justify-between gap-4">
+        <p className="text-xs text-zinc-400">
+          {total === 0
+            ? "Không có kết quả"
+            : `${rangeStart}–${rangeEnd} / ${total} từ`}
+        </p>
+
+        {totalPages > 1 && (
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => onPageChange(Math.max(1, page - 1))}
+              disabled={page === 1}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 hover:bg-zinc-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              aria-label="Trang trước"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+
+            {buildPageNumbers(page, totalPages).map((item, idx) =>
+              item === "…" ? (
+                <span key={`ellipsis-${idx}`} className="px-1 text-xs text-zinc-400">…</span>
+              ) : (
+                <button
+                  key={item}
+                  onClick={() => onPageChange(item as number)}
+                  className={cn(
+                    "h-8 min-w-8 px-2 rounded-lg text-xs font-medium transition-colors",
+                    page === item
+                      ? "bg-violet-600 text-white"
+                      : "text-zinc-600 hover:bg-zinc-100"
+                  )}
+                >
+                  {item}
+                </button>
+              )
+            )}
+
+            <button
+              onClick={() => onPageChange(Math.min(totalPages, page + 1))}
+              disabled={page === totalPages}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 hover:bg-zinc-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              aria-label="Trang sau"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+      </div>
+
       <VocabularyDetailModal
         card={selectedCard}
         open={Boolean(selectedCard)}
@@ -170,6 +171,16 @@ export function VocabularyTable({
       />
     </div>
   );
+}
+
+function buildPageNumbers(current: number, total: number): (number | "…")[] {
+  return Array.from({ length: total }, (_, i) => i + 1)
+    .filter((p) => p === 1 || p === total || Math.abs(p - current) <= 1)
+    .reduce<(number | "…")[]>((acc, p, idx, arr) => {
+      if (idx > 0 && p - (arr[idx - 1] as number) > 1) acc.push("…");
+      acc.push(p);
+      return acc;
+    }, []);
 }
 
 function StatusBadge({ status }: { status: CardStatus }) {
@@ -195,13 +206,4 @@ function mapStatusLabel(status: CardStatus): string {
   if (status === "learning") return "Đang học";
   if (status === "review") return "Ôn tập";
   return "Đã nhớ";
-}
-
-function countFilter(cards: VocabularyCard[], filter: Filter, now: Date): number {
-  if (filter === "all") return cards.length;
-  if (filter === "due")
-    return cards.filter(
-      (c) => new Date(c.dueDate) <= now && c.status !== "mastered"
-    ).length;
-  return cards.filter((c) => c.status === filter).length;
 }

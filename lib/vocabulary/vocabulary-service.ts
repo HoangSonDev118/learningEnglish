@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, lte, ne, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, ilike, lte, ne, or, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import {
   reviewLogs,
@@ -112,6 +112,72 @@ export async function getLibraryCards(): Promise<VocabularyCard[]> {
   const db = getDb();
   const rows = await db.select().from(vocabularyCards).orderBy(desc(vocabularyCards.createdAt));
   return rows.map(mapCard);
+}
+
+export type LibraryFilter = "all" | "new" | "learning" | "review" | "mastered" | "due";
+
+export type LibraryPage = {
+  cards: VocabularyCard[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+};
+
+export async function getLibraryCardsPaged(params: {
+  page: number;
+  pageSize: number;
+  search?: string;
+  filter?: LibraryFilter;
+}): Promise<LibraryPage> {
+  const db = getDb();
+  const { page, pageSize, search, filter } = params;
+  const now = new Date();
+
+  const conditions: ReturnType<typeof eq>[] = [];
+
+  if (search && search.trim()) {
+    const term = `%${search.trim()}%`;
+    conditions.push(
+      or(ilike(vocabularyCards.word, term), ilike(vocabularyCards.meaning, term)) as ReturnType<typeof eq>
+    );
+  }
+
+  if (filter && filter !== "all") {
+    if (filter === "due") {
+      conditions.push(
+        and(lte(vocabularyCards.dueDate, now), ne(vocabularyCards.status, "mastered")) as ReturnType<typeof eq>
+      );
+    } else {
+      conditions.push(eq(vocabularyCards.status, filter) as ReturnType<typeof eq>);
+    }
+  }
+
+  const where = conditions.length > 0 ? and(...conditions) : undefined;
+
+  const [totalResult, rows] = await Promise.all([
+    db
+      .select({ count: count() })
+      .from(vocabularyCards)
+      .where(where),
+    db
+      .select()
+      .from(vocabularyCards)
+      .where(where)
+      .orderBy(desc(vocabularyCards.createdAt))
+      .limit(pageSize)
+      .offset((page - 1) * pageSize),
+  ]);
+
+  const total = Number(totalResult[0]?.count ?? 0);
+
+  return {
+    cards: rows.map(mapCard),
+    total,
+    page,
+    pageSize,
+    totalPages: Math.max(1, Math.ceil(total / pageSize)),
+  };
 }
 
 export async function deleteVocabularyCard(cardId: string): Promise<boolean> {

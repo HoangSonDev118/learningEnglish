@@ -1,79 +1,135 @@
-"use client";
+﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useVocab } from "@/context/VocabContext";
 import { VocabularyTable } from "@/components/library/VocabularyTable";
-import { ArrowLeft, Library } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { ArrowLeft, Library, Search } from "lucide-react";
 import Link from "next/link";
 import { VocabularyCard } from "@/types/vocab";
-import { getClientCache, setClientCache } from "@/lib/utils/client-cache";
+import { cn } from "@/lib/utils/cn";
 
-const LIBRARY_CACHE_KEY = "library-cards";
-const LIBRARY_CACHE_TTL = 120_000;
+const PAGE_SIZE = 50;
+
+type Filter = "all" | "new" | "learning" | "review" | "mastered" | "due";
+
+const FILTERS: { value: Filter; label: string }[] = [
+  { value: "all", label: "Tất cả" },
+  { value: "new", label: "Mới" },
+  { value: "learning", label: "Đang học" },
+  { value: "review", label: "Ôn tập" },
+  { value: "mastered", label: "Đã nhớ" },
+  { value: "due", label: "Đến hạn hôm nay" },
+];
+
+type PageData = {
+  cards: VocabularyCard[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+};
 
 export default function LibraryPage() {
   const { showToast } = useVocab();
-  const [cards, setCards] = useState<VocabularyCard[]>([]);
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<Filter>("all");
+  const [page, setPage] = useState(1);
+  const [data, setData] = useState<PageData | null>(null);
   const [loading, setLoading] = useState(true);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const fetchPage = useCallback(
+    async (p: number, q: string, f: Filter) => {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams({
+          page: String(p),
+          limit: String(PAGE_SIZE),
+          search: q,
+          filter: f,
+        });
+        const res = await fetch(`/api/vocabulary/library?${params.toString()}`, {
+          cache: "no-store",
+        });
+        const json = (await res.json()) as PageData & { error?: string };
+        if (!res.ok) {
+          showToast(json.error ?? "Không thể tải thư viện", "error");
+          return;
+        }
+        setData(json);
+      } catch {
+        showToast("Không thể tải thư viện", "error");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [showToast]
+  );
+
+  // Initial load
+  useEffect(() => {
+    void fetchPage(1, "", "all");
+  }, [fetchPage]);
+
+  // Debounced search: reset to page 1
+  function handleSearchChange(value: string) {
+    setSearch(value);
+    setPage(1);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      void fetchPage(1, value, filter);
+    }, 350);
+  }
+
+  function handleFilterChange(next: Filter) {
+    setFilter(next);
+    setPage(1);
+    void fetchPage(1, search, next);
+  }
+
+  function handlePageChange(next: number) {
+    setPage(next);
+    void fetchPage(next, search, filter);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
 
   async function handleDeleteCard(card: VocabularyCard) {
-    const confirmed = window.confirm(`Bạn có chắc chắn muốn xóa từ \"${card.word}\"?`);
+    const confirmed = window.confirm(`Bạn có chắc chắn muốn xóa từ "${card.word}"?`);
     if (!confirmed) return;
 
-    const previous = cards;
-    const nextCards = cards.filter((c) => c.id !== card.id);
-    setCards(nextCards);
-    setClientCache(LIBRARY_CACHE_KEY, nextCards);
+    // Optimistic: remove from current page
+    if (data) {
+      setData((prev) =>
+        prev
+          ? {
+              ...prev,
+              cards: prev.cards.filter((c) => c.id !== card.id),
+              total: prev.total - 1,
+            }
+          : prev
+      );
+    }
 
     try {
-      const res = await fetch(`/api/vocabulary/${card.id}`, {
-        method: "DELETE",
-      });
-      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      const res = await fetch(`/api/vocabulary/${card.id}`, { method: "DELETE" });
+      const json = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) {
-        setCards(previous);
-        setClientCache(LIBRARY_CACHE_KEY, previous);
-        showToast(data.error ?? "Không thể xóa từ vựng", "error");
+        showToast(json.error ?? "Không thể xóa từ vựng", "error");
+        // Rollback: refetch current page
+        void fetchPage(page, search, filter);
         return;
       }
-
       showToast("Đã xóa từ vựng", "success");
+      // Refetch to keep counts accurate
+      void fetchPage(page, search, filter);
     } catch {
-      setCards(previous);
-      setClientCache(LIBRARY_CACHE_KEY, previous);
       showToast("Không thể xóa từ vựng", "error");
+      void fetchPage(page, search, filter);
     }
   }
 
-  useEffect(() => {
-    let mounted = true;
-
-    const cached = getClientCache<VocabularyCard[]>(LIBRARY_CACHE_KEY, LIBRARY_CACHE_TTL);
-    if (cached && mounted) {
-      setCards(cached);
-      setLoading(false);
-    }
-
-    fetch("/api/vocabulary/library", { cache: "no-store" })
-      .then((res) => res.json())
-      .then((data) => {
-        if (mounted) {
-          const nextCards = (data.cards ?? []) as VocabularyCard[];
-          setCards(nextCards);
-          setClientCache(LIBRARY_CACHE_KEY, nextCards);
-        }
-      })
-      .catch(() => {
-        if (mounted && !cached) showToast("Không thể tải thư viện", "error");
-      })
-      .finally(() => {
-        if (mounted && !cached) setLoading(false);
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const isEmpty = !loading && data && data.total === 0 && !search && filter === "all";
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 space-y-6 page-enter">
@@ -89,17 +145,46 @@ export default function LibraryPage() {
           <div>
             <h1 className="text-2xl font-bold text-zinc-900">Thư viện từ vựng</h1>
             <p className="mt-1 text-sm text-zinc-500">
-              Tổng cộng {cards.length} từ trong bộ học
+              {data ? `Tổng cộng ${data.total} từ trong bộ học` : "Đang tải..."}
             </p>
           </div>
         </div>
       </div>
 
-      {loading ? (
+      {/* Search + Filters */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center animate-fade-up">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+          <Input
+            placeholder="Tìm từ hoặc nghĩa..."
+            className="pl-9"
+            value={search}
+            onChange={(e) => handleSearchChange(e.target.value)}
+          />
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {FILTERS.map((f) => (
+            <button
+              key={f.value}
+              onClick={() => handleFilterChange(f.value)}
+              className={cn(
+                "rounded-xl px-3 py-1.5 text-xs font-medium transition-all",
+                filter === f.value
+                  ? "bg-violet-600 text-white shadow-sm"
+                  : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+              )}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {loading && !data ? (
         <div className="rounded-3xl border border-zinc-100 bg-white px-8 py-20 text-center text-zinc-400 animate-pop-in">
           Đang tải thư viện...
         </div>
-      ) : cards.length === 0 ? (
+      ) : isEmpty ? (
         <div className="flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-zinc-200 bg-white px-8 py-20 text-center animate-pop-in">
           <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-zinc-100">
             <Library className="h-7 w-7 text-zinc-400" />
@@ -115,11 +200,20 @@ export default function LibraryPage() {
             Nhập từ vựng
           </Link>
         </div>
-      ) : (
-        <div className="animate-fade-up" style={{ animationDelay: "70ms", animationFillMode: "both" }}>
-          <VocabularyTable cards={cards} onDelete={handleDeleteCard} />
+      ) : data ? (
+        <div className={cn("animate-fade-up", loading && "opacity-60 pointer-events-none")}
+          style={{ animationDelay: "70ms", animationFillMode: "both" }}>
+          <VocabularyTable
+            cards={data.cards}
+            total={data.total}
+            page={data.page}
+            pageSize={data.pageSize}
+            totalPages={data.totalPages}
+            onDelete={handleDeleteCard}
+            onPageChange={handlePageChange}
+          />
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
