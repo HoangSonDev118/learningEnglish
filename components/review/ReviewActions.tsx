@@ -2,7 +2,7 @@
 
 import { ReviewRating } from "@/types/vocab";
 import { Button } from "@/components/ui/button";
-import { playClickButtonSound } from "@/lib/utils/click-sound";
+import { playClickAndEasyTogether, playClickButtonSound } from "@/lib/utils/click-sound";
 
 type Props = {
   onRate: (rating: ReviewRating) => void;
@@ -58,7 +58,11 @@ export function ReviewActions({ onRate }: Props) {
             type="button"
             variant={r.variant}
             onClick={() => {
-              playClickButtonSound();
+              if (r.rating === "easy") {
+                playClickAndEasyTogether();
+              } else {
+                playClickButtonSound();
+              }
               onRate(r.rating);
             }}
             className={`min-h-24 flex-col items-center gap-1 rounded-2xl px-2 py-3 text-center border-b-[4px] active:border-b-[2px] active:translate-y-[2px] ${
