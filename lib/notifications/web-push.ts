@@ -3,7 +3,7 @@ import { count, eq, lte } from "drizzle-orm";
 import { getDb } from "@/db";
 import { pushSubscriptions, vocabularyCards } from "@/db/schema";
 
-const DUE_THRESHOLD = 50;
+const DUE_THRESHOLD = 30;
 const NOTIFY_COOLDOWN_MS = 6 * 60 * 60 * 1000;
 
 let vapidConfigured = false;
@@ -114,7 +114,7 @@ export async function sendDueReminderPushIfNeeded(options?: { force?: boolean })
 
     const payload = JSON.stringify({
       title: "Từ vựng cần ôn tập",
-      body: `Bạn đang có ${dueCount} từ đến hạn. Vào app để ôn tập nhé.`,
+      body: `Yâu Yâu Yâu đang có ${dueCount} từ đến hạn. Vào app ngay để ôn tập nàoooooooo. Let's gooooooooooooooo 🔥🔥🔥🔥🔥`,
       url: "/review",
       dueCount,
       sentAt: now.toISOString(),
