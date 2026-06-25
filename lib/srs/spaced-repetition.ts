@@ -40,6 +40,8 @@ function computeMasteryScore(card: VocabularyCard): number {
   return Math.max(0, Math.min(100, repetitionScore + intervalScore + accuracyScore));
 }
 
+const MASTERED_RECHECK_DAYS = 30;
+
 export function applyReview(
   card: VocabularyCard,
   rating: ReviewRating
@@ -48,6 +50,35 @@ export function applyReview(
   let { repetition, interval, easeFactor, lapses } = card;
   let status: CardStatus = "review";
   let dueDate: string;
+
+  // Special handling for mastered cards during periodic recheck.
+  if (card.status === "mastered") {
+    if (rating === "again" || rating === "hard") {
+      // Forgotten — demote back to active review.
+      return {
+        ...card,
+        status: "review",
+        repetition: Math.max(4, card.repetition - 2),
+        interval: 7,
+        lapses: lapses + 1,
+        easeFactor: Math.max(MIN_EASE_FACTOR, easeFactor - 0.2),
+        dueDate: addDaysToNow(7),
+        lastReviewedAt: now,
+        updatedAt: now,
+        wrongCount: (card.wrongCount ?? 0) + 1,
+      };
+    } else {
+      // Still remembered — keep mastered, push due date out another 30 days.
+      return {
+        ...card,
+        status: "mastered",
+        dueDate: addDaysToNow(MASTERED_RECHECK_DAYS),
+        lastReviewedAt: now,
+        updatedAt: now,
+        correctCount: (card.correctCount ?? 0) + 1,
+      };
+    }
+  }
 
   switch (rating) {
     case "again":
@@ -91,6 +122,7 @@ export function applyReview(
 
   if (repetition >= MASTERED_THRESHOLD) {
     status = "mastered";
+    dueDate = addDaysToNow(MASTERED_RECHECK_DAYS);
   }
 
   const base: VocabularyCard = {

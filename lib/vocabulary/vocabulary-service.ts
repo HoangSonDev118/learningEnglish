@@ -190,6 +190,33 @@ export async function deleteVocabularyCard(cardId: string): Promise<boolean> {
   return deleted.length > 0;
 }
 
+export async function resetVocabularyCard(cardId: string): Promise<VocabularyCard | null> {
+  const db = getDb();
+  const now = new Date();
+
+  const updated = await db
+    .update(vocabularyCards)
+    .set({
+      status: "new",
+      reviewMode: "flashcard",
+      repetition: 0,
+      interval: 0,
+      easeFactor: 2.5,
+      lapses: 0,
+      dueDate: now,
+      lastReviewedAt: null,
+      typingEnabled: false,
+      masteryScore: 0,
+      correctCount: 0,
+      wrongCount: 0,
+      updatedAt: now,
+    })
+    .where(eq(vocabularyCards.id, cardId))
+    .returning();
+
+  return updated[0] ? mapCard(updated[0]) : null;
+}
+
 export async function getDashboardSummary(): Promise<DashboardSummary> {
   const cards = await getLibraryCards();
   const stats = await getStudyStats();
@@ -292,7 +319,7 @@ export async function getDueSessionItems(): Promise<ReviewSessionItem[]> {
   const rows = await db
     .select()
     .from(vocabularyCards)
-    .where(and(lte(vocabularyCards.dueDate, new Date()), ne(vocabularyCards.status, "mastered")))
+    .where(lte(vocabularyCards.dueDate, new Date()))
     .orderBy(
       asc(
         sql`case

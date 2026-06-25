@@ -7,20 +7,22 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ExampleList } from "@/components/vocabulary/ExampleList";
 import { formatRelativeDate } from "@/lib/utils/date";
-import { X } from "lucide-react";
+import { X, RotateCcw } from "lucide-react";
 import { useVocab } from "@/context/VocabContext";
 
 type VocabularyDetailModalProps = {
   card: VocabularyCard | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onReset?: (card: VocabularyCard) => void;
 };
 
-export function VocabularyDetailModal({ card, open, onOpenChange }: VocabularyDetailModalProps) {
+export function VocabularyDetailModal({ card, open, onOpenChange, onReset }: VocabularyDetailModalProps) {
   const { showToast } = useVocab();
   const [examples, setExamples] = useState<VocabularyExample[]>([]);
   const [loadingExamples, setLoadingExamples] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   useEffect(() => {
     if (!card || !open) return;
@@ -43,6 +45,28 @@ export function VocabularyDetailModal({ card, open, onOpenChange }: VocabularyDe
       mounted = false;
     };
   }, [card, open]);
+
+  async function handleReset() {
+    if (!card) return;
+    const confirmed = window.confirm(`Đặt lại "${card.word}" về trạng thái mới? Toàn bộ tiến độ sẽ bị xóa.`);
+    if (!confirmed) return;
+    try {
+      setResetting(true);
+      const res = await fetch(`/api/vocabulary/${card.id}/reset`, { method: "POST" });
+      const data = (await res.json()) as { card?: VocabularyCard; error?: string };
+      if (!res.ok) {
+        showToast(data.error ?? "Không thể đặt lại từ vựng", "error");
+        return;
+      }
+      showToast(`Đã đặt lại "${card.word}" về trạng thái mới`, "success");
+      onReset?.(data.card!);
+      onOpenChange(false);
+    } catch {
+      showToast("Không thể đặt lại từ vựng", "error");
+    } finally {
+      setResetting(false);
+    }
+  }
 
   async function handleGenerate(forceRefresh = false) {
     if (!card) return;
@@ -118,6 +142,22 @@ export function VocabularyDetailModal({ card, open, onOpenChange }: VocabularyDe
 
             {loadingExamples ? <p className="text-sm text-zinc-400">Đang tải ví dụ...</p> : <ExampleList examples={examples} />}
           </div>
+
+          {card && (
+            <div className="mt-6 border-t border-zinc-100 pt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+                onClick={handleReset}
+                disabled={resetting}
+              >
+                <RotateCcw className="h-4 w-4" />
+                {resetting ? "Đang đặt lại..." : "Học lại từ đầu"}
+              </Button>
+              <p className="mt-1.5 text-xs text-zinc-400">Xóa toàn bộ tiến độ, đặt lại về từ mới.</p>
+            </div>
+          )}
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
