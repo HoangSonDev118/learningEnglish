@@ -1,0 +1,28 @@
+name: Push Reminder Cron
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+jobs:
+  trigger-push-reminder:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call push reminder endpoint
+        env:
+          PUSH_CRON_URL: ${{ secrets.PUSH_CRON_URL }}
+        run: |
+          if [ -z "$PUSH_CRON_URL" ]; then
+            echo "Missing PUSH_CRON_URL secret"
+            exit 1
+          fi
+
+          echo "Calling $PUSH_CRON_URL"
+          status=$(curl -sS -o response.json -w "%{http_code}" "$PUSH_CRON_URL")
+          cat response.json
+
+          if [ "$status" -lt 200 ] || [ "$status" -ge 300 ]; then
+            echo "Request failed with status $status"
+            exit 1
+          fi
