@@ -110,7 +110,7 @@ export async function sendDueReminderPushIfNeeded(options?: { force?: boolean })
 
     const payload = JSON.stringify({
       title: "Từ vựng cần ôn tập",
-      body: `Bạn đang có ${dueCount} từ đến hạn. Vào app để ôn tập nhé.`,
+      body: `Yâu Yâu có ${dueCount} từ đến hạn. Let's goooooo!! 🔥🔥🔥.`,
       url: "/review",
     });
 
