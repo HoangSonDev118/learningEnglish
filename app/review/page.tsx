@@ -18,6 +18,10 @@ import { TypingReviewCard } from "@/components/review/TypingReviewCard";
 import { ExampleList } from "@/components/vocabulary/ExampleList";
 import { Button } from "@/components/ui/button";
 import { speakEnglish } from "@/lib/utils/speech";
+import { clearClientCache, getClientCache, setClientCache } from "@/lib/utils/client-cache";
+
+const REVIEW_CACHE_KEY = "review-session-items";
+const REVIEW_CACHE_TTL = 30_000;
 
 export default function ReviewPage() {
   type PendingReviewRequest = {
@@ -92,8 +96,21 @@ export default function ReviewPage() {
   );
 
   async function loadSession() {
+    const cached = getClientCache<ReviewSessionItem[]>(REVIEW_CACHE_KEY, REVIEW_CACHE_TTL);
+    if (cached && cached.length > 0) {
+      setSessionItems(cached);
+      setSessionStarted(true);
+      setCurrentIndex(0);
+      setShowAnswer(false);
+      setSummary(null);
+      setCounts({ again: 0, hard: 0, good: 0, easy: 0 });
+      setExamples([]);
+      setShowExamples(false);
+      setSessionLoading(false);
+    }
+
     try {
-      setSessionLoading(true);
+      if (!cached) setSessionLoading(true);
       const res = await fetch("/api/vocabulary/due", { cache: "no-store" });
       const data = (await res.json()) as {
         items?: ReviewSessionItem[];
@@ -101,7 +118,7 @@ export default function ReviewPage() {
       };
 
       if (!res.ok) {
-        showToast(data.error ?? "Khong the tai the den han", "error");
+        showToast(data.error ?? "Không thể tải thẻ đến hạn", "error");
         return;
       }
 
@@ -114,10 +131,11 @@ export default function ReviewPage() {
       setCounts({ again: 0, hard: 0, good: 0, easy: 0 });
       setExamples([]);
       setShowExamples(false);
+      setClientCache(REVIEW_CACHE_KEY, items);
     } catch {
-      showToast("Khong the tai the den han", "error");
+      if (!cached) showToast("Không thể tải thẻ đến hạn", "error");
     } finally {
-      setSessionLoading(false);
+      if (!cached) setSessionLoading(false);
     }
   }
 
@@ -133,12 +151,12 @@ export default function ReviewPage() {
       });
       const data = (await res.json()) as { examples?: VocabularyExample[]; error?: string };
       if (!res.ok) {
-        showToast(data.error ?? "Khong the tai vi du", "error");
+        showToast(data.error ?? "Không thể tải ví dụ", "error");
         return;
       }
       setExamples(data.examples ?? []);
     } catch {
-      showToast("Khong the tai vi du", "error");
+      showToast("Không thể tải ví dụ", "error");
     } finally {
       setLoadingExamples(false);
     }
@@ -154,13 +172,13 @@ export default function ReviewPage() {
       });
       const data = (await res.json()) as { examples?: VocabularyExample[]; error?: string };
       if (!res.ok) {
-        showToast(data.error ?? "Khong the tao vi du", "error");
+        showToast(data.error ?? "Không thể tạo ví dụ", "error");
         return;
       }
       setExamples(data.examples ?? []);
-      showToast("Da tao vi du", "success");
+      showToast("Đã tạo ví dụ", "success");
     } catch {
-      showToast("Khong the tao vi du", "error");
+      showToast("Không thể tạo ví dụ", "error");
     } finally {
       setGeneratingExamples(false);
     }
@@ -221,6 +239,7 @@ export default function ReviewPage() {
         goodCount: nextCounts.good,
         easyCount: nextCounts.easy,
       });
+      clearClientCache(REVIEW_CACHE_KEY);
       return;
     }
 
@@ -228,6 +247,7 @@ export default function ReviewPage() {
     setShowAnswer(false);
     setShowExamples(false);
     setExamples([]);
+    setClientCache(REVIEW_CACHE_KEY, sessionItems.slice(nextIndex));
   }
 
   function handleFlashcardRate(rating: ReviewRating) {
@@ -235,7 +255,7 @@ export default function ReviewPage() {
     enqueueSyncRequest({
       endpoint: "/api/review/flashcard",
       body: { cardId: currentCard.id, rating },
-      failureMessage: "Khong the dong bo ket qua on tap the",
+      failureMessage: "Không thể đồng bộ kết quả ôn tập thẻ",
     });
     moveNext(rating);
   }
@@ -258,7 +278,7 @@ export default function ReviewPage() {
         ratingIfCorrect: payload.ratingIfCorrect,
         expectedWord: currentCard.word,
       },
-      failureMessage: "Khong the dong bo ket qua on tap go lai",
+      failureMessage: "Không thể đồng bộ kết quả ôn tập gõ lại",
     });
 
     moveNext(resolvedRating);
@@ -270,32 +290,32 @@ export default function ReviewPage() {
 
   if (sessionLoading) {
     return (
-      <div className="mx-auto max-w-2xl px-4 py-8 text-center text-zinc-400">
-        Dang tai phien on tap...
+      <div className="mx-auto max-w-2xl px-4 py-8 text-center text-zinc-400 animate-pop-in">
+        Đang tải phiên ôn tập...
       </div>
     );
   }
 
   if (!sessionStarted || sessionItems.length === 0) {
     return (
-      <div className="mx-auto max-w-2xl px-4 py-8">
+      <div className="mx-auto max-w-2xl px-4 py-8 page-enter">
         <Link href="/" className="flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-800 mb-8 transition-colors">
           <ArrowLeft className="h-4 w-4" />
-          Quay lai tong quan
+          Quay lại tổng quan
         </Link>
-        <div className="flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-zinc-200 bg-white px-8 py-24 text-center">
+        <div className="flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-zinc-200 bg-white px-8 py-24 text-center animate-pop-in">
           <div className="mb-4 text-5xl">🎉</div>
           <h2 className="text-xl font-semibold text-zinc-800">
-            Ban da hoan thanh hom nay!
+            Bạn đã hoàn thành hôm nay!
           </h2>
           <p className="mt-2 text-sm text-zinc-400">
-            Hien khong co the den han. Quay lai sau nhe!
+            Hiện không có thẻ đến hạn. Quay lại sau nhé!
           </p>
           <Link
             href="/"
             className="mt-6 flex items-center gap-2 rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-violet-700 transition-colors"
           >
-            Ve tong quan
+            Về tổng quan
           </Link>
         </div>
       </div>
@@ -304,7 +324,7 @@ export default function ReviewPage() {
 
   if (summary) {
     return (
-      <div className="mx-auto max-w-2xl px-4 py-8">
+      <div className="mx-auto max-w-2xl px-4 py-8 page-enter">
         <ReviewSummary summary={summary} onRestart={handleRestart} />
       </div>
     );
@@ -315,14 +335,14 @@ export default function ReviewPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8">
+    <div className="mx-auto max-w-2xl px-4 py-8 page-enter">
       <div className="mb-6 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-800 transition-colors">
           <ArrowLeft className="h-4 w-4" />
-          Tong quan
+          Tổng quan
         </Link>
         <p className="text-sm font-medium text-zinc-500">
-          Phien on tap
+          Phiên ôn tập
         </p>
       </div>
 
@@ -330,7 +350,7 @@ export default function ReviewPage() {
         className="mb-4 min-h-5 text-xs text-right transition-opacity duration-200 text-zinc-400"
         style={{ opacity: pendingSyncCount > 0 ? 1 : 0 }}
       >
-        Dang dong bo nen: {pendingSyncCount}
+        Đang đồng bộ nền: {pendingSyncCount}
       </p>
 
       <ReviewProgress
@@ -363,7 +383,7 @@ export default function ReviewPage() {
                   }}
                   className="text-sm text-violet-600 hover:text-violet-700 font-medium"
                 >
-                  {showExamples ? "An vi du" : "Hien vi du"}
+                  {showExamples ? "Ẩn ví dụ" : "Hiện ví dụ"}
                 </button>
 
                 {showExamples && (
@@ -371,13 +391,13 @@ export default function ReviewPage() {
                     <div className="flex items-center justify-between mb-3">
                       <p className="text-sm font-semibold text-zinc-700 flex items-center gap-1.5">
                         <BookOpenText className="h-4 w-4" />
-                        Cau vi du
+                        Câu ví dụ
                       </p>
                       <Button size="sm" variant="outline" onClick={() => generateExamples(currentCard.id)} disabled={generatingExamples}>
-                        {generatingExamples ? "Dang tao..." : "Tao vi du"}
+                        {generatingExamples ? "Đang tạo..." : "Tạo ví dụ"}
                       </Button>
                     </div>
-                    {loadingExamples ? <p className="text-sm text-zinc-400">Dang tai...</p> : <ExampleList examples={examples} />}
+                    {loadingExamples ? <p className="text-sm text-zinc-400">Đang tải...</p> : <ExampleList examples={examples} />}
                   </div>
                 )}
               </div>
@@ -391,10 +411,10 @@ export default function ReviewPage() {
             <div className="flex items-center justify-between mb-3">
               <p className="text-sm font-semibold text-zinc-700 flex items-center gap-1.5">
                 <BookOpenText className="h-4 w-4" />
-                Cau vi du
+                Câu ví dụ
               </p>
               <Button size="sm" variant="outline" onClick={() => generateExamples(currentCard.id)} disabled={generatingExamples}>
-                {generatingExamples ? "Dang tao..." : "Tao vi du"}
+                {generatingExamples ? "Đang tạo..." : "Tạo ví dụ"}
               </Button>
             </div>
             <Button
@@ -404,7 +424,7 @@ export default function ReviewPage() {
               onClick={() => loadExamples(currentCard.id)}
               disabled={loadingExamples}
             >
-              {loadingExamples ? "Dang tai..." : "Tai vi du"}
+              {loadingExamples ? "Đang tải..." : "Tải ví dụ"}
             </Button>
             <ExampleList examples={examples} />
           </div>

@@ -6,7 +6,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = (await req.json()) as { cardId?: string; rating?: ReviewRating };
     if (!body.cardId || !body.rating) {
-      return NextResponse.json({ error: "Can cardId va rating" }, { status: 400 });
+      return NextResponse.json({ error: "Cần cardId và rating" }, { status: 400 });
     }
 
     const card = await submitFlashcardReview({
@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ card });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Khong the gui ket qua on tap the";
+    const message = error instanceof Error ? error.message : "Không thể gửi kết quả ôn tập thẻ";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

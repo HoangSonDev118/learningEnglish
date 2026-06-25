@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "VocabSRS — Hoc tu vung ngat quang",
-  description: "Hoc tu vung tieng Anh bang phuong phap ngat quang",
+  title: "VocabSRS - Học từ vựng ngắt quãng",
+  description: "Học từ vựng tiếng Anh bằng phương pháp ngắt quãng",
   manifest: "/manifest.webmanifest",
   icons: {
     icon: [{ url: "/logo.png", type: "image/png" }],

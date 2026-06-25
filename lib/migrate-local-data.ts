@@ -22,7 +22,7 @@ export async function migrateLegacyLocalData() {
 
   if (!res.ok) {
     const data = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(data.error ?? "Khong the chuyen du lieu local");
+    throw new Error(data.error ?? "Không thể chuyển dữ liệu local");
   }
 
   const data = (await res.json()) as {

@@ -8,7 +8,7 @@ type ExampleListProps = {
 
 export function ExampleList({ examples }: ExampleListProps) {
   if (examples.length === 0) {
-    return <p className="text-sm text-zinc-400">Chua co cau vi du.</p>;
+    return <p className="text-sm text-zinc-400">Chưa có câu ví dụ.</p>;
   }
 
   return (

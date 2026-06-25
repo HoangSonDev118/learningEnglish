@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
 
     if (!body.cardId || body.typedAnswer === undefined || !body.expectedWord) {
       return NextResponse.json(
-        { error: "Can cardId, typedAnswer va expectedWord" },
+        { error: "Cần cardId, typedAnswer và expectedWord" },
         { status: 400 }
       );
     }
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
       resolvedRating: result.resolvedRating,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Khong the gui ket qua on tap go lai";
+    const message = error instanceof Error ? error.message : "Không thể gửi kết quả ôn tập gõ lại";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

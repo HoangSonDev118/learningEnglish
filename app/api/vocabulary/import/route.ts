@@ -7,7 +7,7 @@ export async function POST(req: NextRequest) {
     const items = body.items ?? [];
 
     if (!Array.isArray(items)) {
-      return NextResponse.json({ error: "Du lieu gui len khong hop le" }, { status: 400 });
+      return NextResponse.json({ error: "Dữ liệu gửi lên không hợp lệ" }, { status: 400 });
     }
 
     const sanitized = items
@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
     const result = await importVocabularyItems(sanitized);
     return NextResponse.json(result);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Khong the nhap tu vung";
+    const message = error instanceof Error ? error.message : "Không thể nhập từ vựng";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -15,7 +15,7 @@ export function parseVocabText(rawText: string): ParseResult {
       invalidLines.push({
         lineNumber: i + 1,
         content: line,
-        reason: 'Thieu dau ":" de phan cach',
+        reason: 'Thiếu dấu ":" để phân cách',
       });
       continue;
     }
@@ -27,7 +27,7 @@ export function parseVocabText(rawText: string): ParseResult {
       invalidLines.push({
         lineNumber: i + 1,
         content: line,
-        reason: "Tu tieng Anh dang rong",
+        reason: "Từ tiếng Anh đang rỗng",
       });
       continue;
     }
@@ -36,7 +36,7 @@ export function parseVocabText(rawText: string): ParseResult {
       invalidLines.push({
         lineNumber: i + 1,
         content: line,
-        reason: "Nghia tieng Viet dang rong",
+        reason: "Nghĩa tiếng Việt đang rỗng",
       });
       continue;
     }

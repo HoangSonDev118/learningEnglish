@@ -42,6 +42,94 @@ body {
   to { opacity: 1; }
 }
 
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes pulse-soft {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.35);
+  }
+  50% {
+    transform: scale(1.04);
+    box-shadow: 0 0 0 8px rgba(239, 68, 68, 0);
+  }
+}
+
+@keyframes grow-x {
+  from {
+    opacity: 0.7;
+    transform: scaleX(0.9);
+    transform-origin: left;
+  }
+  to {
+    opacity: 1;
+    transform: scaleX(1);
+    transform-origin: left;
+  }
+}
+
 .slide-in-from-right-5 { animation: slide-in-from-right-5 0.3s ease-out; }
 .slide-in-from-bottom-2 { animation: slide-in-from-bottom-2 0.3s ease-out; }
 .fade-in { animation: fade-in 0.25s ease-out; }
+.animate-fade-up { animation: fade-up 0.45s cubic-bezier(0.2, 0.65, 0.2, 1); }
+.animate-pop-in { animation: pop-in 0.3s cubic-bezier(0.2, 0.7, 0.2, 1); }
+.animate-grow-x { animation: grow-x 0.45s ease-out; }
+.badge-pulse { animation: pulse-soft 1.4s ease-in-out infinite; }
+
+.page-enter {
+  animation: fade-up 0.5s cubic-bezier(0.2, 0.65, 0.2, 1);
+}
+
+.stagger-in > * {
+  opacity: 0;
+  animation: fade-up 0.45s cubic-bezier(0.2, 0.65, 0.2, 1) forwards;
+}
+
+.stagger-in > :nth-child(1) { animation-delay: 40ms; }
+.stagger-in > :nth-child(2) { animation-delay: 90ms; }
+.stagger-in > :nth-child(3) { animation-delay: 140ms; }
+.stagger-in > :nth-child(4) { animation-delay: 190ms; }
+.stagger-in > :nth-child(5) { animation-delay: 240ms; }
+.stagger-in > :nth-child(6) { animation-delay: 290ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Prevent iOS Safari from zooming when focusing form controls. */
+@media (max-width: 768px) {
+  @supports (-webkit-touch-callout: none) {
+    input,
+    textarea,
+    select {
+      font-size: 16px;
+    }
+  }
+}

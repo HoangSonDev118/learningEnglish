@@ -114,6 +114,16 @@ export async function getLibraryCards(): Promise<VocabularyCard[]> {
   return rows.map(mapCard);
 }
 
+export async function deleteVocabularyCard(cardId: string): Promise<boolean> {
+  const db = getDb();
+  const deleted = await db
+    .delete(vocabularyCards)
+    .where(eq(vocabularyCards.id, cardId))
+    .returning({ id: vocabularyCards.id });
+
+  return deleted.length > 0;
+}
+
 export async function getDashboardSummary(): Promise<DashboardSummary> {
   const cards = await getLibraryCards();
   const stats = await getStudyStats();

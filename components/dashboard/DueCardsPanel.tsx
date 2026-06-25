@@ -14,27 +14,28 @@ export function DueCardsPanel({ dueCards }: { dueCards: VocabularyCard[] }) {
   const preview = dueCards.slice(0, 5);
 
   return (
-    <Card>
+    <Card className="animate-fade-up" style={{ animationDelay: "120ms", animationFillMode: "both" }}>
       <CardContent className="p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Clock className="h-4 w-4 text-red-500" />
             <p className="text-sm font-semibold text-zinc-700">
-              Den han hien tai ({dueCards.length})
+              Đến hạn hiện tại ({dueCards.length})
             </p>
           </div>
           <Link
             href="/review"
             className="flex items-center gap-1 text-xs text-violet-600 hover:text-violet-700 font-medium transition-colors"
           >
-            On tap tat ca <ArrowRight className="h-3 w-3" />
+            Ôn tập tất cả <ArrowRight className="h-3 w-3" />
           </Link>
         </div>
         <div className="space-y-2">
-          {preview.map((card) => (
+          {preview.map((card, index) => (
             <div
               key={card.id}
-              className="flex items-center justify-between rounded-xl bg-zinc-50 px-3 py-2.5"
+              className="flex items-center justify-between rounded-xl bg-zinc-50 px-3 py-2.5 animate-fade-up"
+              style={{ animationDelay: `${140 + index * 45}ms`, animationFillMode: "both" }}
             >
               <div className="flex items-center gap-2.5">
                 <Badge
@@ -59,7 +60,7 @@ export function DueCardsPanel({ dueCards }: { dueCards: VocabularyCard[] }) {
           ))}
           {dueCards.length > 5 && (
             <p className="text-xs text-zinc-400 text-center pt-1">
-              +{dueCards.length - 5} the nua
+              +{dueCards.length - 5} thẻ nữa
             </p>
           )}
         </div>
@@ -69,8 +70,8 @@ export function DueCardsPanel({ dueCards }: { dueCards: VocabularyCard[] }) {
 }
 
 function mapStatusLabel(status: VocabularyCard["status"]): string {
-  if (status === "new") return "Moi";
-  if (status === "learning") return "Dang hoc";
-  if (status === "review") return "On tap";
-  return "Da nho";
+  if (status === "new") return "Mới";
+  if (status === "learning") return "Đang học";
+  if (status === "review") return "Ôn tập";
+  return "Đã nhớ";
 }

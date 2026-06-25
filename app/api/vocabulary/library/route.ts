@@ -6,7 +6,7 @@ export async function GET() {
     const cards = await getLibraryCards();
     return NextResponse.json({ cards });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Khong the tai thu vien";
+    const message = error instanceof Error ? error.message : "Không thể tải thư viện";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

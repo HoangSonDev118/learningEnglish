@@ -56,13 +56,13 @@ export function VocabularyDetailModal({ card, open, onOpenChange }: VocabularyDe
       });
       const data = (await res.json()) as { examples?: VocabularyExample[]; error?: string };
       if (!res.ok) {
-        showToast(data.error ?? "Khong the tao vi du", "error");
+        showToast(data.error ?? "Không thể tạo ví dụ", "error");
         return;
       }
       setExamples(data.examples ?? []);
-      showToast("Da tao vi du", "success");
+      showToast("Đã tạo ví dụ", "success");
     } catch {
-      showToast("Khong the tao vi du", "error");
+      showToast("Không thể tạo ví dụ", "error");
     } finally {
       setGenerating(false);
     }
@@ -87,15 +87,15 @@ export function VocabularyDetailModal({ card, open, onOpenChange }: VocabularyDe
 
           {card && (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-              <Stat label="Trang thai" value={mapStatusLabel(card.status)} />
-              <Stat label="Lan lap" value={String(card.repetition)} />
-              <Stat label="Khoang lap" value={`${card.interval} ngay`} />
-              <Stat label="Do de" value={card.easeFactor.toFixed(2)} />
-              <Stat label="Lan on tiep" value={formatRelativeDate(card.dueDate)} />
-              <Stat label="Dung" value={String(card.correctCount ?? 0)} />
+              <Stat label="Trạng thái" value={mapStatusLabel(card.status)} />
+              <Stat label="Lần lặp" value={String(card.repetition)} />
+              <Stat label="Khoảng lặp" value={`${card.interval} ngày`} />
+              <Stat label="Độ dễ" value={card.easeFactor.toFixed(2)} />
+              <Stat label="Lần ôn tiếp" value={formatRelativeDate(card.dueDate)} />
+              <Stat label="Đúng" value={String(card.correctCount ?? 0)} />
               <Stat label="Sai" value={String(card.wrongCount ?? 0)} />
               <div className="rounded-xl bg-zinc-50 p-3 border border-zinc-100">
-                <p className="text-xs text-zinc-400 mb-1">Che do</p>
+                <p className="text-xs text-zinc-400 mb-1">Chế độ</p>
                 <Badge variant="review">{mapModeLabel(card.reviewMode)}</Badge>
               </div>
             </div>
@@ -103,20 +103,20 @@ export function VocabularyDetailModal({ card, open, onOpenChange }: VocabularyDe
 
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-zinc-700">Cau vi du</h3>
+              <h3 className="text-sm font-semibold text-zinc-700">Câu ví dụ</h3>
               <div className="flex gap-2">
                 {examples.length > 0 && (
                   <Button size="sm" variant="outline" onClick={() => handleGenerate(true)} disabled={generating}>
-                    Lam moi vi du
+                    Làm mới ví dụ
                   </Button>
                 )}
                 <Button size="sm" onClick={() => handleGenerate(false)} disabled={generating}>
-                  {generating ? "Dang tao..." : examples.length > 0 ? "Tao lai" : "Tao vi du"}
+                  {generating ? "Đang tạo..." : examples.length > 0 ? "Tạo lại" : "Tạo ví dụ"}
                 </Button>
               </div>
             </div>
 
-            {loadingExamples ? <p className="text-sm text-zinc-400">Dang tai vi du...</p> : <ExampleList examples={examples} />}
+            {loadingExamples ? <p className="text-sm text-zinc-400">Đang tải ví dụ...</p> : <ExampleList examples={examples} />}
           </div>
         </Dialog.Content>
       </Dialog.Portal>
@@ -125,16 +125,16 @@ export function VocabularyDetailModal({ card, open, onOpenChange }: VocabularyDe
 }
 
 function mapStatusLabel(status: VocabularyCard["status"]): string {
-  if (status === "new") return "Moi";
-  if (status === "learning") return "Dang hoc";
-  if (status === "review") return "On tap";
-  return "Da nho";
+  if (status === "new") return "Mới";
+  if (status === "learning") return "Đang học";
+  if (status === "review") return "Ôn tập";
+  return "Đã nhớ";
 }
 
 function mapModeLabel(mode: VocabularyCard["reviewMode"]): string {
-  if (mode === "flashcard") return "The ghi nho";
-  if (mode === "typing") return "Go lai";
-  return "Tron";
+  if (mode === "flashcard") return "Thẻ ghi nhớ";
+  if (mode === "typing") return "Gõ lại";
+  return "Trộn";
 }
 
 function Stat({ label, value }: { label: string; value: string }) {

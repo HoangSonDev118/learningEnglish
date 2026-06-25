@@ -6,7 +6,7 @@ export async function GET() {
     const items = await getDueSessionItems();
     return NextResponse.json({ items, dueCount: items.length });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Khong the tai the den han";
+    const message = error instanceof Error ? error.message : "Không thể tải thẻ đến hạn";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -10,7 +10,7 @@ export async function GET(
     const examples = await getExamplesForCard(id);
     return NextResponse.json({ examples });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Khong the tai vi du";
+    const message = error instanceof Error ? error.message : "Không thể tải ví dụ";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

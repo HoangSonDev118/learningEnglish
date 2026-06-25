@@ -54,21 +54,21 @@ export function TypingReviewCard({ card, onSubmit }: TypingReviewCardProps) {
   }
 
   return (
-    <div className="w-full max-w-2xl mx-auto rounded-3xl border border-zinc-100 bg-white shadow-xl p-6 min-h-80">
+    <div className="w-full max-w-2xl mx-auto rounded-3xl border border-zinc-100 bg-white shadow-xl p-6 min-h-80 animate-pop-in">
       <p className="text-xs font-semibold uppercase tracking-widest text-zinc-400 mb-3 text-center">
-        Che do go lai
+        Chế độ gõ lại
       </p>
-      <p className="text-sm text-zinc-500 text-center mb-1.5">Nghia tieng Viet</p>
+      <p className="text-sm text-zinc-500 text-center mb-1.5">Nghĩa tiếng Việt</p>
       <h2 className="text-2xl sm:text-3xl font-bold text-center text-zinc-900 mb-6 leading-tight">
         {card.meaning}
       </h2>
 
       {!checked ? (
-        <div className="space-y-3 min-h-36">
+        <div className="space-y-3 min-h-36 animate-fade-up">
           <Input
             value={answer}
             onChange={(e) => setAnswer(e.target.value)}
-            placeholder="Nhap tu tieng Anh"
+            placeholder="Nhập từ tiếng Anh"
             className="h-12 text-lg"
             onKeyDown={(e) => {
               if (e.key === "Enter") {
@@ -79,7 +79,7 @@ export function TypingReviewCard({ card, onSubmit }: TypingReviewCardProps) {
           />
           <div className="flex gap-3">
             <Button className="flex-1" size="lg" onClick={checkAnswer} disabled={!answer.trim()}>
-              Kiem tra (Enter)
+              Kiểm tra (Enter)
             </Button>
             <Button
               variant="outline"
@@ -91,37 +91,37 @@ export function TypingReviewCard({ card, onSubmit }: TypingReviewCardProps) {
                 speakEnglish(card.word);
               }}
             >
-              Minh khong biet
+              Mình không biết
             </Button>
           </div>
         </div>
       ) : isCorrect ? (
-        <div className="space-y-3 min-h-36">
+          <div className="space-y-3 min-h-36 animate-fade-up">
           <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-center text-emerald-700 font-semibold">
-            Chinh xac! Chon do kho de cap nhat SRS.
+            Chính xác! Chọn độ khó để cập nhật SRS.
           </div>
           <div className="grid grid-cols-3 gap-3">
             <Button variant="hard" onClick={() => handleSubmitCorrect("hard")} disabled={isSubmitting}>
-              Kho
+              Khó
             </Button>
             <Button variant="good" onClick={() => handleSubmitCorrect("good")} disabled={isSubmitting}>
-              Tot
+              Tốt
             </Button>
             <Button variant="easy" onClick={() => handleSubmitCorrect("easy")} disabled={isSubmitting}>
-              De
+              Dễ
             </Button>
           </div>
         </div>
       ) : (
-        <div className="space-y-3 min-h-36">
+        <div className="space-y-3 min-h-36 animate-fade-up">
           <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-center">
-            <p className="text-red-700 font-semibold">Chua dung</p>
+            <p className="text-red-700 font-semibold">Chưa đúng</p>
             <p className="text-sm text-zinc-600 mt-1">
-              Dap an dung: <span className="font-bold text-zinc-900">{card.word}</span>
+              Đáp án đúng: <span className="font-bold text-zinc-900">{card.word}</span>
             </p>
           </div>
           <Button className="w-full" size="lg" onClick={handleContinueWrong} disabled={isSubmitting}>
-            Tiep tuc
+            Tiếp tục
           </Button>
         </div>
       )}

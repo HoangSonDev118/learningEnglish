@@ -16,30 +16,30 @@ const RATINGS: {
 }[] = [
   {
     rating: "again",
-    label: "Hoc lai",
+    label: "Học lại",
     shortcut: "1",
-    description: "Quen mat",
+    description: "Quên mất",
     variant: "again",
   },
   {
     rating: "hard",
-    label: "Kho",
+    label: "Khó",
     shortcut: "2",
-    description: "Nho duoc nhung hoi kho",
+    description: "Nhớ được nhưng hơi khó",
     variant: "hard",
   },
   {
     rating: "good",
-    label: "Tot",
+    label: "Tốt",
     shortcut: "3",
-    description: "Nho dung",
+    description: "Nhớ đúng",
     variant: "good",
   },
   {
     rating: "easy",
-    label: "De",
+    label: "Dễ",
     shortcut: "4",
-    description: "Rat de",
+    description: "Rất dễ",
     variant: "easy",
   },
 ];
@@ -48,9 +48,9 @@ export function ReviewActions({ onRate }: Props) {
   return (
     <div className="w-full max-w-2xl mx-auto mt-6">
       <p className="text-center text-xs text-zinc-400 mb-3 font-medium">
-        Ban nho tot den muc nao?
+        Bạn nhớ tốt đến mức nào?
       </p>
-      <div className="grid grid-cols-4 gap-2 sm:gap-3">
+      <div className="grid grid-cols-4 gap-2 sm:gap-3 stagger-in">
         {RATINGS.map((r) => (
           <button
             key={r.rating}

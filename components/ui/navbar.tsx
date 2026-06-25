@@ -1,21 +1,29 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { BookOpen, LayoutDashboard, Library, Upload } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
 const navItems = [
-  { href: "/", label: "Tong quan", icon: LayoutDashboard },
-  { href: "/review", label: "On tap", icon: BookOpen },
-  { href: "/import", label: "Nhap", icon: Upload },
-  { href: "/library", label: "Thu vien", icon: Library },
+  { href: "/", label: "Tổng quan", icon: LayoutDashboard },
+  { href: "/review", label: "Ôn tập", icon: BookOpen },
+  { href: "/import", label: "Nhập", icon: Upload },
+  { href: "/library", label: "Thư viện", icon: Library },
 ];
 
 export function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [dueCount, setDueCount] = useState(0);
+
+  useEffect(() => {
+    router.prefetch("/");
+    router.prefetch("/review");
+    router.prefetch("/import");
+    router.prefetch("/library");
+  }, [router]);
 
   useEffect(() => {
     let mounted = true;
@@ -34,7 +42,7 @@ export function Navbar() {
   }, [pathname]);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-zinc-100 bg-white/90 backdrop-blur-sm">
+    <header className="sticky top-0 z-40 border-b border-zinc-100 bg-white/90 backdrop-blur-sm animate-fade-up">
       <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
         <Link href="/" className="flex items-center gap-2 font-bold text-zinc-900">
           <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-600 text-white text-xs">
@@ -61,7 +69,7 @@ export function Navbar() {
                 <item.icon className="h-4 w-4" />
                 <span className="hidden sm:inline">{item.label}</span>
                 {isDue && !isActive && (
-                  <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1.5 flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold leading-none">
+                  <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1.5 flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold leading-none badge-pulse">
                     {dueCount}
                   </span>
                 )}

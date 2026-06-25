@@ -6,7 +6,7 @@ export async function GET() {
     const summary = await getDashboardSummary();
     return NextResponse.json(summary);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Khong the tai du lieu tong quan";
+    const message = error instanceof Error ? error.message : "Không thể tải dữ liệu tổng quan";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

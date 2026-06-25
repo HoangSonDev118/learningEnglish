@@ -30,7 +30,7 @@ export function ImportVocabularyCard() {
 
   function handleFile(file: File) {
     if (!file.name.endsWith(".txt")) {
-      showToast("Vui long tai len file .txt", "error");
+      showToast("Vui lòng tải lên file .txt", "error");
       return;
     }
     const reader = new FileReader();
@@ -68,7 +68,7 @@ export function ImportVocabularyCard() {
       };
 
       if (!res.ok) {
-        showToast(data.error ?? "Nhap du lieu that bai", "error");
+        showToast(data.error ?? "Nhập dữ liệu thất bại", "error");
         return;
       }
 
@@ -76,12 +76,12 @@ export function ImportVocabularyCard() {
       const duplicatesSkipped = data.duplicatesSkipped ?? 0;
       setImportResult({ insertedCount, duplicatesSkipped });
 
-      showToast(`Da nhap ${insertedCount} tu`, "success");
+      showToast(`Đã nhập ${insertedCount} từ`, "success");
       if (duplicatesSkipped > 0) {
-        showToast(`Bo qua ${duplicatesSkipped} tu bi trung`, "info");
+        showToast(`Bỏ qua ${duplicatesSkipped} từ bị trùng`, "info");
       }
     } catch {
-      showToast("Nhap du lieu that bai", "error");
+      showToast("Nhập dữ liệu thất bại", "error");
     } finally {
       setIsImporting(false);
     }
@@ -101,10 +101,10 @@ export function ImportVocabularyCard() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <Upload className="h-5 w-5 text-violet-600" />
-          Nhap file tu vung
+          Nhập file từ vựng
         </CardTitle>
         <CardDescription>
-          Tai len file .txt voi dinh dang moi dong: <code className="text-xs bg-zinc-100 px-1 py-0.5 rounded">english: vietnamese</code>
+          Tải lên file .txt với định dạng mỗi dòng: <code className="text-xs bg-zinc-100 px-1 py-0.5 rounded">english: vietnamese</code>
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -124,8 +124,8 @@ export function ImportVocabularyCard() {
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-violet-100">
               <FileText className="h-7 w-7 text-violet-600" />
             </div>
-            <p className="font-medium text-zinc-700">Tha file .txt vao day</p>
-            <p className="mt-1 text-sm text-zinc-400">hoac bam de chon file</p>
+            <p className="font-medium text-zinc-700">Thả file .txt vào đây</p>
+            <p className="mt-1 text-sm text-zinc-400">hoặc bấm để chọn file</p>
             <input
               ref={fileInputRef}
               type="file"
@@ -149,17 +149,17 @@ export function ImportVocabularyCard() {
             <div className="flex flex-wrap gap-2">
               <Badge variant="mastered">
                 <CheckCircle className="h-3 w-3 mr-1" />
-                {validCount} hop le
+                {validCount} hợp lệ
               </Badge>
               {importResult && importResult.duplicatesSkipped > 0 && (
                 <Badge variant="secondary">
-                  {importResult.duplicatesSkipped} ban ghi trung (da bo qua)
+                  {importResult.duplicatesSkipped} bản ghi trùng (đã bỏ qua)
                 </Badge>
               )}
               {parseResult.invalidLines.length > 0 && (
                 <Badge variant="due">
                   <AlertTriangle className="h-3 w-3 mr-1" />
-                  {parseResult.invalidLines.length} loi
+                  {parseResult.invalidLines.length} lỗi
                 </Badge>
               )}
             </div>
@@ -168,7 +168,7 @@ export function ImportVocabularyCard() {
               <div className="rounded-xl border border-red-200 bg-red-50 p-4 space-y-1.5">
                 <p className="text-sm font-semibold text-red-700 flex items-center gap-1.5">
                   <AlertTriangle className="h-4 w-4" />
-                  Dong khong hop le (se duoc bo qua)
+                  Dòng không hợp lệ (sẽ được bỏ qua)
                 </p>
                 {parseResult.invalidLines.map((err) => (
                   <div key={err.lineNumber} className="flex items-start gap-2 text-xs text-red-600">
@@ -184,11 +184,11 @@ export function ImportVocabularyCard() {
 
             {validCount > 0 ? (
               <Button onClick={handleImport} className="w-full" size="lg" disabled={isImporting}>
-                {isImporting ? "Dang nhap..." : `Nhap ${validCount} tu vao bo hoc`}
+                {isImporting ? "Đang nhập..." : `Nhập ${validCount} từ vào bộ học`}
               </Button>
             ) : (
               <p className="text-center text-sm text-zinc-400 py-2">
-                Khong co tu moi de nhap
+                Không có từ mới để nhập
               </p>
             )}
           </div>

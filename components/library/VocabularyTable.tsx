@@ -5,22 +5,28 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { CardStatus, VocabularyCard } from "@/types/vocab";
 import { formatRelativeDate } from "@/lib/utils/date";
-import { Search } from "lucide-react";
+import { Search, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { VocabularyDetailModal } from "@/components/vocabulary/VocabularyDetailModal";
 
 type Filter = "all" | CardStatus | "due";
 
 const FILTERS: { value: Filter; label: string }[] = [
-  { value: "all", label: "Tat ca" },
-  { value: "new", label: "Moi" },
-  { value: "learning", label: "Dang hoc" },
-  { value: "review", label: "On tap" },
-  { value: "mastered", label: "Da nho" },
-  { value: "due", label: "Den han hom nay" },
+  { value: "all", label: "Tất cả" },
+  { value: "new", label: "Mới" },
+  { value: "learning", label: "Đang học" },
+  { value: "review", label: "Ôn tập" },
+  { value: "mastered", label: "Đã nhớ" },
+  { value: "due", label: "Đến hạn hôm nay" },
 ];
 
-export function VocabularyTable({ cards }: { cards: VocabularyCard[] }) {
+export function VocabularyTable({
+  cards,
+  onDelete,
+}: {
+  cards: VocabularyCard[];
+  onDelete: (card: VocabularyCard) => void;
+}) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [selectedCard, setSelectedCard] = useState<VocabularyCard | null>(null);
@@ -48,7 +54,7 @@ export function VocabularyTable({ cards }: { cards: VocabularyCard[] }) {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
           <Input
-            placeholder="Tim tu hoac nghia..."
+            placeholder="Tìm từ hoặc nghĩa..."
             className="pl-9"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -81,37 +87,40 @@ export function VocabularyTable({ cards }: { cards: VocabularyCard[] }) {
           <thead className="bg-zinc-50 border-b border-zinc-100">
             <tr>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                Tu vung
+                Từ vựng
               </th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500 hidden sm:table-cell">
-                Nghia
+                Nghĩa
               </th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                Trang thai
+                Trạng thái
               </th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500 hidden md:table-cell">
-                Khoang lap
+                Khoảng lặp
               </th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500 hidden md:table-cell">
-                Lan lap
+                Lần lặp
               </th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500 hidden lg:table-cell">
-                Lan on tiep
+                Lần ôn tiếp
+              </th>
+              <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                Xóa
               </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-50">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-zinc-400 text-sm">
-                  Khong co the nao khop bo loc
+                <td colSpan={7} className="px-4 py-10 text-center text-zinc-400 text-sm">
+                  Không có thẻ nào khớp bộ lọc
                 </td>
               </tr>
             ) : (
               filtered.map((card) => (
                 <tr
                   key={card.id}
-                  className="hover:bg-violet-50/30 transition-colors cursor-pointer"
+                  className="hover:bg-violet-50/30 transition-colors cursor-pointer animate-fade-up"
                   onClick={() => setSelectedCard(card)}
                 >
                   <td className="px-4 py-3 font-semibold text-zinc-900">{card.word}</td>
@@ -130,6 +139,19 @@ export function VocabularyTable({ cards }: { cards: VocabularyCard[] }) {
                   <td className="px-4 py-3 text-zinc-400 text-xs hidden lg:table-cell">
                     {formatRelativeDate(card.dueDate)}
                   </td>
+                  <td className="px-4 py-3 text-right">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDelete(card);
+                      }}
+                      className="inline-flex items-center justify-center rounded-lg p-1.5 text-zinc-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                      aria-label={`Xóa từ ${card.word}`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </td>
                 </tr>
               ))
             )}
@@ -137,7 +159,7 @@ export function VocabularyTable({ cards }: { cards: VocabularyCard[] }) {
         </table>
       </div>
       <p className="text-xs text-zinc-400 text-right">
-        Hien {filtered.length}/{cards.length} tu
+        Hiện {filtered.length}/{cards.length} từ
       </p>
       <VocabularyDetailModal
         card={selectedCard}
@@ -169,10 +191,10 @@ function StatusBadge({ status }: { status: CardStatus }) {
 }
 
 function mapStatusLabel(status: CardStatus): string {
-  if (status === "new") return "Moi";
-  if (status === "learning") return "Dang hoc";
-  if (status === "review") return "On tap";
-  return "Da nho";
+  if (status === "new") return "Mới";
+  if (status === "learning") return "Đang học";
+  if (status === "review") return "Ôn tập";
+  return "Đã nhớ";
 }
 
 function countFilter(cards: VocabularyCard[], filter: Filter, now: Date): number {

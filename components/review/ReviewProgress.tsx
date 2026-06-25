@@ -9,16 +9,16 @@ export function ReviewProgress({ current, total }: Props) {
   const pct = total > 0 ? (current / total) * 100 : 0;
 
   return (
-    <div className="w-full max-w-2xl mx-auto mb-6">
+    <div className="w-full max-w-2xl mx-auto mb-6 animate-fade-up">
       <div className="flex items-center justify-between mb-2">
         <p className="text-sm font-medium text-zinc-600">
-          {current} / {total} the
+          {current} / {total} thẻ
         </p>
-        <p className="text-sm text-zinc-400">Con lai {total - current}</p>
+        <p className="text-sm text-zinc-400">Còn lại {total - current}</p>
       </div>
       <div className="h-2 rounded-full bg-zinc-100 overflow-hidden">
         <div
-          className="h-full rounded-full bg-linear-to-r from-violet-500 to-violet-400 transition-all duration-500 ease-out"
+          className="h-full rounded-full bg-linear-to-r from-violet-500 to-violet-400 transition-all duration-500 ease-out animate-grow-x"
           style={{ width: `${pct}%` }}
         />
       </div>

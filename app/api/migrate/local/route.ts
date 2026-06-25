@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     const result = await importLegacyData({ cards, stats: body.stats ?? null });
     return NextResponse.json(result);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Khong the chuyen du lieu local";
+    const message = error instanceof Error ? error.message : "Không thể chuyển dữ liệu local";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

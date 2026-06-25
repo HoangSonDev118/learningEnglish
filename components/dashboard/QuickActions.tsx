@@ -13,12 +13,12 @@ type QuickActionsProps = {
 export function QuickActions({ dueCount, hasCards, onLoadDemo }: QuickActionsProps) {
 
   return (
-    <div className="flex flex-wrap gap-3">
+    <div className="flex flex-wrap gap-3 stagger-in">
       {dueCount > 0 ? (
         <Link href="/review">
           <Button size="lg" className="gap-2">
             <PlayCircle className="h-5 w-5" />
-            Bat dau on tap
+            Bắt đầu ôn tập
             <span className="ml-1 rounded-full bg-white/20 px-2 py-0.5 text-xs font-bold">
               {dueCount}
             </span>
@@ -27,27 +27,27 @@ export function QuickActions({ dueCount, hasCards, onLoadDemo }: QuickActionsPro
       ) : (
         <Button size="lg" disabled className="gap-2 opacity-60">
           <PlayCircle className="h-5 w-5" />
-          Khong co the den han
+          Không có thẻ đến hạn
         </Button>
       )}
 
       <Link href="/import">
         <Button variant="outline" size="lg" className="gap-2">
           <Upload className="h-5 w-5" />
-          Nhap tu vung
+          Nhập từ vựng
         </Button>
       </Link>
 
       <Button variant="secondary" size="lg" className="gap-2" onClick={onLoadDemo}>
         <Sparkles className="h-5 w-5" />
-        Nap du lieu mau
+        Nạp dữ liệu mẫu
       </Button>
 
       {hasCards && (
         <Link href="/library">
           <Button variant="ghost" size="lg" className="gap-2">
             <Library className="h-5 w-5" />
-            Xem thu vien
+            Xem thư viện
           </Button>
         </Link>
       )}
