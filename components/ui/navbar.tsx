@@ -61,8 +61,8 @@ export function Navbar() {
                 <item.icon className="h-4 w-4" />
                 <span className="hidden sm:inline">{item.label}</span>
                 {isDue && !isActive && (
-                  <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold">
-                    {dueCount > 9 ? "9+" : dueCount}
+                  <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1.5 flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold leading-none">
+                    {dueCount}
                   </span>
                 )}
               </Link>

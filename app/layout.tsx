@@ -18,6 +18,17 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "VocabSRS — Hoc tu vung ngat quang",
   description: "Hoc tu vung tieng Anh bang phuong phap ngat quang",
+  manifest: "/manifest.webmanifest",
+  icons: {
+    icon: [{ url: "/logo.png", type: "image/png" }],
+    shortcut: [{ url: "/logo.png", type: "image/png" }],
+    apple: [{ url: "/logo.png", type: "image/png" }],
+  },
+  appleWebApp: {
+    capable: true,
+    title: "VocabSRS",
+    statusBarStyle: "default",
+  },
 };
 
 export default function RootLayout({

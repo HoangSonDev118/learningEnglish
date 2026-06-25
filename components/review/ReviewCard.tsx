@@ -16,16 +16,15 @@ export function ReviewCard({ card, showAnswer, onShowAnswer }: Props) {
     <div className="w-full max-w-2xl mx-auto">
       <div
         className={cn(
-          "relative rounded-3xl border border-zinc-100 bg-white shadow-xl overflow-hidden transition-all duration-300",
-          showAnswer ? "min-h-85" : "min-h-65"
+          "relative rounded-3xl border border-zinc-100 bg-white shadow-xl overflow-hidden transition-all duration-300"
         )}
       >
         {/* Card front */}
-        <div className="flex flex-col items-center justify-center px-10 py-12 text-center min-h-65">
+        <div className="flex flex-col items-center justify-center px-8 py-8 text-center min-h-56">
           <p className="text-xs font-semibold uppercase tracking-widest text-zinc-400 mb-6">
             Tieng Anh
           </p>
-          <h1 className="text-4xl sm:text-5xl font-bold text-zinc-900 tracking-tight">
+          <h1 className="text-3xl sm:text-4xl font-bold text-zinc-900 tracking-tight leading-tight">
             {card.word}
           </h1>
           <p className="mt-3 text-sm text-zinc-400">
@@ -35,16 +34,16 @@ export function ReviewCard({ card, showAnswer, onShowAnswer }: Props) {
 
         {/* Answer section */}
         {showAnswer ? (
-          <div className="border-t border-zinc-100 bg-violet-50/60 px-10 py-8 text-center animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <div className="border-t border-zinc-100 bg-violet-50/60 px-8 py-5 text-center min-h-24 animate-in fade-in slide-in-from-bottom-2 duration-300">
             <p className="text-xs font-semibold uppercase tracking-widest text-violet-400 mb-3">
               Tieng Viet
             </p>
-            <p className="text-2xl sm:text-3xl font-semibold text-violet-900">
+            <p className="text-xl sm:text-2xl font-semibold text-violet-900">
               {card.meaning}
             </p>
           </div>
         ) : (
-          <div className="flex justify-center pb-8">
+          <div className="flex justify-center min-h-24 items-center">
             <button
               onClick={onShowAnswer}
               className="flex items-center gap-2 rounded-xl bg-zinc-900 px-6 py-3 text-sm font-semibold text-white hover:bg-zinc-700 active:scale-95 transition-all"

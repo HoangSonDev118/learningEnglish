@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useVocab } from "@/context/VocabContext";
 import { ReviewCard } from "@/components/review/ReviewCard";
 import { ReviewActions } from "@/components/review/ReviewActions";
@@ -20,6 +20,13 @@ import { Button } from "@/components/ui/button";
 import { speakEnglish } from "@/lib/utils/speech";
 
 export default function ReviewPage() {
+  type PendingReviewRequest = {
+    endpoint: "/api/review/flashcard" | "/api/review/typing";
+    body: Record<string, unknown>;
+    attempts: number;
+    failureMessage: string;
+  };
+
   const { showToast } = useVocab();
   const [sessionItems, setSessionItems] = useState<ReviewSessionItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -32,9 +39,57 @@ export default function ReviewPage() {
   const [showExamples, setShowExamples] = useState(false);
   const [loadingExamples, setLoadingExamples] = useState(false);
   const [generatingExamples, setGeneratingExamples] = useState(false);
+  const [pendingSyncCount, setPendingSyncCount] = useState(0);
+  const syncQueueRef = useRef<PendingReviewRequest[]>([]);
+  const isFlushingRef = useRef(false);
 
   const currentItem = sessionItems[currentIndex];
   const currentCard = currentItem?.card;
+
+  const flushSyncQueue = useCallback(async () => {
+    if (isFlushingRef.current) return;
+    isFlushingRef.current = true;
+
+    try {
+      while (syncQueueRef.current.length > 0) {
+        const item = syncQueueRef.current[0];
+        try {
+          const res = await fetch(item.endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(item.body),
+            keepalive: true,
+          });
+          const data = (await res.json().catch(() => ({}))) as { error?: string };
+          if (!res.ok) {
+            throw new Error(data.error ?? item.failureMessage);
+          }
+          syncQueueRef.current.shift();
+          setPendingSyncCount(syncQueueRef.current.length);
+        } catch {
+          item.attempts += 1;
+          if (item.attempts >= 3) {
+            syncQueueRef.current.shift();
+            setPendingSyncCount(syncQueueRef.current.length);
+            showToast(item.failureMessage, "error");
+          } else {
+            await new Promise((resolve) => setTimeout(resolve, 400 * item.attempts));
+          }
+        }
+      }
+    } finally {
+      isFlushingRef.current = false;
+    }
+  }, [showToast]);
+
+  const enqueueSyncRequest = useCallback(
+    (request: Omit<PendingReviewRequest, "attempts">) => {
+      syncQueueRef.current.push({ ...request, attempts: 0 });
+      setPendingSyncCount(syncQueueRef.current.length);
+      void flushSyncQueue();
+    },
+    [flushSyncQueue]
+  );
 
   async function loadSession() {
     try {
@@ -175,58 +230,38 @@ export default function ReviewPage() {
     setExamples([]);
   }
 
-  async function handleFlashcardRate(rating: ReviewRating) {
+  function handleFlashcardRate(rating: ReviewRating) {
     if (!currentCard) return;
-    try {
-      const res = await fetch("/api/review/flashcard", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cardId: currentCard.id, rating }),
-      });
-      const data = (await res.json()) as { error?: string };
-      if (!res.ok) {
-        showToast(data.error ?? "Khong the luu ket qua on tap", "error");
-        return;
-      }
-      showToast("Da luu ket qua on tap", "success");
-      moveNext(rating);
-    } catch {
-      showToast("Khong the luu ket qua on tap", "error");
-    }
+    enqueueSyncRequest({
+      endpoint: "/api/review/flashcard",
+      body: { cardId: currentCard.id, rating },
+      failureMessage: "Khong the dong bo ket qua on tap the",
+    });
+    moveNext(rating);
   }
 
-  async function handleTypingSubmit(payload: {
+  function handleTypingSubmit(payload: {
     typedAnswer: string;
     isCorrect: boolean;
     ratingIfCorrect?: Exclude<ReviewRating, "again">;
   }) {
     if (!currentCard) return;
-    try {
-      const res = await fetch("/api/review/typing", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          cardId: currentCard.id,
-          typedAnswer: payload.typedAnswer,
-          ratingIfCorrect: payload.ratingIfCorrect,
-          expectedWord: currentCard.word,
-        }),
-      });
-      const data = (await res.json()) as {
-        resolvedRating?: ReviewRating;
-        error?: string;
-      };
-      if (!res.ok) {
-        showToast(data.error ?? "Khong the luu ket qua go lai", "error");
-        return;
-      }
+    const resolvedRating: ReviewRating = payload.isCorrect
+      ? payload.ratingIfCorrect ?? "good"
+      : "again";
 
-      const resolvedRating = data.resolvedRating ?? "again";
-      showToast("Da luu ket qua on tap", "success");
-      moveNext(resolvedRating);
-    } catch {
-      showToast("Khong the luu ket qua go lai", "error");
-    }
+    enqueueSyncRequest({
+      endpoint: "/api/review/typing",
+      body: {
+        cardId: currentCard.id,
+        typedAnswer: payload.typedAnswer,
+        ratingIfCorrect: payload.ratingIfCorrect,
+        expectedWord: currentCard.word,
+      },
+      failureMessage: "Khong the dong bo ket qua on tap go lai",
+    });
+
+    moveNext(resolvedRating);
   }
 
   function handleRestart() {
@@ -291,6 +326,13 @@ export default function ReviewPage() {
         </p>
       </div>
 
+      <p
+        className="mb-4 min-h-5 text-xs text-right transition-opacity duration-200 text-zinc-400"
+        style={{ opacity: pendingSyncCount > 0 ? 1 : 0 }}
+      >
+        Dang dong bo nen: {pendingSyncCount}
+      </p>
+
       <ReviewProgress
         current={currentIndex}
         total={sessionItems.length}
@@ -299,6 +341,7 @@ export default function ReviewPage() {
       {currentItem.mode === "flashcard" ? (
         <>
           <ReviewCard
+            key={currentCard.id}
             card={currentCard}
             showAnswer={showAnswer}
             onShowAnswer={() => {
@@ -343,7 +386,7 @@ export default function ReviewPage() {
         </>
       ) : (
         <>
-          <TypingReviewCard card={currentCard} onSubmit={handleTypingSubmit} />
+          <TypingReviewCard key={currentCard.id} card={currentCard} onSubmit={handleTypingSubmit} />
           <div className="mt-6 w-full max-w-2xl mx-auto rounded-2xl border border-zinc-100 bg-white p-4">
             <div className="flex items-center justify-between mb-3">
               <p className="text-sm font-semibold text-zinc-700 flex items-center gap-1.5">

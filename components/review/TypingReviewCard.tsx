@@ -13,7 +13,7 @@ type TypingReviewCardProps = {
     typedAnswer: string;
     isCorrect: boolean;
     ratingIfCorrect?: Exclude<ReviewRating, "again">;
-  }) => Promise<void>;
+  }) => void | Promise<void>;
 };
 
 export function TypingReviewCard({ card, onSubmit }: TypingReviewCardProps) {
@@ -32,7 +32,7 @@ export function TypingReviewCard({ card, onSubmit }: TypingReviewCardProps) {
   async function handleSubmitCorrect(ratingIfCorrect: Exclude<ReviewRating, "again">) {
     setIsSubmitting(true);
     try {
-      await onSubmit({ typedAnswer: answer, isCorrect: true, ratingIfCorrect });
+      await Promise.resolve(onSubmit({ typedAnswer: answer, isCorrect: true, ratingIfCorrect }));
       setAnswer("");
       setChecked(false);
       setIsCorrect(false);
@@ -44,7 +44,7 @@ export function TypingReviewCard({ card, onSubmit }: TypingReviewCardProps) {
   async function handleContinueWrong() {
     setIsSubmitting(true);
     try {
-      await onSubmit({ typedAnswer: answer, isCorrect: false });
+      await Promise.resolve(onSubmit({ typedAnswer: answer, isCorrect: false }));
       setAnswer("");
       setChecked(false);
       setIsCorrect(false);
@@ -54,17 +54,17 @@ export function TypingReviewCard({ card, onSubmit }: TypingReviewCardProps) {
   }
 
   return (
-    <div className="w-full max-w-2xl mx-auto rounded-3xl border border-zinc-100 bg-white shadow-xl p-8">
-      <p className="text-xs font-semibold uppercase tracking-widest text-zinc-400 mb-4 text-center">
+    <div className="w-full max-w-2xl mx-auto rounded-3xl border border-zinc-100 bg-white shadow-xl p-6 min-h-80">
+      <p className="text-xs font-semibold uppercase tracking-widest text-zinc-400 mb-3 text-center">
         Che do go lai
       </p>
-      <p className="text-sm text-zinc-500 text-center mb-2">Nghia tieng Viet</p>
-      <h2 className="text-3xl sm:text-4xl font-bold text-center text-zinc-900 mb-8">
+      <p className="text-sm text-zinc-500 text-center mb-1.5">Nghia tieng Viet</p>
+      <h2 className="text-2xl sm:text-3xl font-bold text-center text-zinc-900 mb-6 leading-tight">
         {card.meaning}
       </h2>
 
       {!checked ? (
-        <div className="space-y-4">
+        <div className="space-y-3 min-h-36">
           <Input
             value={answer}
             onChange={(e) => setAnswer(e.target.value)}
@@ -96,7 +96,7 @@ export function TypingReviewCard({ card, onSubmit }: TypingReviewCardProps) {
           </div>
         </div>
       ) : isCorrect ? (
-        <div className="space-y-4">
+        <div className="space-y-3 min-h-36">
           <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-center text-emerald-700 font-semibold">
             Chinh xac! Chon do kho de cap nhat SRS.
           </div>
@@ -113,7 +113,7 @@ export function TypingReviewCard({ card, onSubmit }: TypingReviewCardProps) {
           </div>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3 min-h-36">
           <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-center">
             <p className="text-red-700 font-semibold">Chua dung</p>
             <p className="text-sm text-zinc-600 mt-1">

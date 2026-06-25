@@ -23,6 +23,15 @@ type ExampleRow = typeof vocabularyExamples.$inferSelect;
 
 type ImportInput = { word: string; meaning: string };
 
+function shuffleArray<T>(items: T[]): T[] {
+  const next = [...items];
+  for (let i = next.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [next[i], next[j]] = [next[j], next[i]];
+  }
+  return next;
+}
+
 function mapCard(row: CardRow): VocabularyCard {
   return {
     id: row.id,
@@ -219,8 +228,8 @@ export async function getDueSessionItems(): Promise<ReviewSessionItem[]> {
       asc(vocabularyCards.dueDate)
     );
 
-  const cards = rows.map(mapCard);
-  const typingCandidates = cards.filter((c) => isTypingEligible(c));
+  const cards = shuffleArray(rows.map(mapCard));
+  const typingCandidates = shuffleArray(cards.filter((c) => isTypingEligible(c)));
   const typingQuota = Math.max(0, Math.floor(cards.length * 0.3));
   const typingSet = new Set(typingCandidates.slice(0, typingQuota).map((c) => c.id));
 
