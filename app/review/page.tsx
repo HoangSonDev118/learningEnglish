@@ -97,8 +97,11 @@ export default function ReviewPage() {
 
   async function loadSession() {
     const cached = getClientCache<ReviewSessionItem[]>(REVIEW_CACHE_KEY, REVIEW_CACHE_TTL);
-    if (cached && cached.length > 0) {
-      setSessionItems(cached);
+    const hasWarmCache = Boolean(cached && cached.length > 0);
+
+    if (hasWarmCache) {
+      const warmCacheItems = cached as ReviewSessionItem[];
+      setSessionItems(warmCacheItems);
       setSessionStarted(true);
       setCurrentIndex(0);
       setShowAnswer(false);
@@ -110,7 +113,7 @@ export default function ReviewPage() {
     }
 
     try {
-      if (!cached) setSessionLoading(true);
+      if (!hasWarmCache) setSessionLoading(true);
       const res = await fetch("/api/vocabulary/due", { cache: "no-store" });
       const data = (await res.json()) as {
         items?: ReviewSessionItem[];
@@ -118,11 +121,19 @@ export default function ReviewPage() {
       };
 
       if (!res.ok) {
-        showToast(data.error ?? "Không thể tải thẻ đến hạn", "error");
+        if (!hasWarmCache) {
+          showToast(data.error ?? "Không thể tải thẻ đến hạn", "error");
+        }
         return;
       }
 
       const items = data.items ?? [];
+      // Keep current UI stable when loading from cache to avoid random card swaps.
+      setClientCache(REVIEW_CACHE_KEY, items);
+      if (hasWarmCache) {
+        return;
+      }
+
       setSessionItems(items);
       setSessionStarted(items.length > 0);
       setCurrentIndex(0);
@@ -131,11 +142,10 @@ export default function ReviewPage() {
       setCounts({ again: 0, hard: 0, good: 0, easy: 0 });
       setExamples([]);
       setShowExamples(false);
-      setClientCache(REVIEW_CACHE_KEY, items);
     } catch {
-      if (!cached) showToast("Không thể tải thẻ đến hạn", "error");
+      if (!hasWarmCache) showToast("Không thể tải thẻ đến hạn", "error");
     } finally {
-      if (!cached) setSessionLoading(false);
+      if (!hasWarmCache) setSessionLoading(false);
     }
   }
 
