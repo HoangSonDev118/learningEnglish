@@ -1,0 +1,59 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { BookOpen, LayoutDashboard, Library, Upload } from "lucide-react";
+import { cn } from "@/lib/utils/cn";
+import { useVocab } from "@/context/VocabContext";
+
+const navItems = [
+  { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/review", label: "Review", icon: BookOpen },
+  { href: "/import", label: "Import", icon: Upload },
+  { href: "/library", label: "Library", icon: Library },
+];
+
+export function Navbar() {
+  const pathname = usePathname();
+  const { dueCards } = useVocab();
+
+  return (
+    <header className="sticky top-0 z-40 border-b border-zinc-100 bg-white/90 backdrop-blur-sm">
+      <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
+        <Link href="/" className="flex items-center gap-2 font-bold text-zinc-900">
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-600 text-white text-xs">
+            V
+          </span>
+          <span className="hidden sm:inline">VocabSRS</span>
+        </Link>
+
+        <nav className="flex items-center gap-1">
+          {navItems.map((item) => {
+            const isActive = pathname === item.href;
+            const isDue = item.href === "/review" && dueCards.length > 0;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "relative flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium transition-all",
+                  isActive
+                    ? "bg-violet-600 text-white"
+                    : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
+                )}
+              >
+                <item.icon className="h-4 w-4" />
+                <span className="hidden sm:inline">{item.label}</span>
+                {isDue && !isActive && (
+                  <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold">
+                    {dueCards.length > 9 ? "9+" : dueCards.length}
+                  </span>
+                )}
+              </Link>
+            );
+          })}
+        </nav>
+      </div>
+    </header>
+  );
+}
