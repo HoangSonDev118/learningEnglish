@@ -17,6 +17,22 @@ export type PushSubscriptionInput = {
   };
 };
 
+type PushSkipReason =
+  | "below-threshold"
+  | "not-configured"
+  | "cooldown"
+  | "expired"
+  | "permission-gone"
+  | "send-error";
+
+type PushSendSummary = {
+  sent: number;
+  dueCount: number;
+  threshold: number;
+  totalSubscriptions: number;
+  skipped: Record<PushSkipReason, number>;
+};
+
 function getVapidConfig() {
   return {
     publicKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
@@ -34,6 +50,21 @@ function ensureWebPushConfigured() {
   webpush.setVapidDetails(subject, publicKey, privateKey);
   vapidConfigured = true;
   return true;
+}
+
+function createEmptySkipped(): Record<PushSkipReason, number> {
+  return {
+    "below-threshold": 0,
+    "not-configured": 0,
+    cooldown: 0,
+    expired: 0,
+    "permission-gone": 0,
+    "send-error": 0,
+  };
+}
+
+function endpointTail(endpoint: string) {
+  return endpoint.slice(-18);
 }
 
 export function getWebPushPublicKey() {
@@ -89,14 +120,29 @@ async function getDueCount() {
 
 export async function sendDueReminderPushIfNeeded(options?: { force?: boolean }) {
   const configured = ensureWebPushConfigured();
+  const skipped = createEmptySkipped();
   if (!configured) {
-    return { sent: 0, skipped: "not-configured" as const, dueCount: 0 };
+    skipped["not-configured"] = 1;
+    return {
+      sent: 0,
+      dueCount: 0,
+      threshold: DUE_THRESHOLD,
+      totalSubscriptions: 0,
+      skipped,
+    } satisfies PushSendSummary;
   }
 
   const db = getDb();
   const dueCount = await getDueCount();
   if (!options?.force && dueCount <= DUE_THRESHOLD) {
-    return { sent: 0, skipped: "below-threshold" as const, dueCount };
+    skipped["below-threshold"] = 1;
+    return {
+      sent: 0,
+      dueCount,
+      threshold: DUE_THRESHOLD,
+      totalSubscriptions: 0,
+      skipped,
+    } satisfies PushSendSummary;
   }
 
   const now = new Date();
@@ -104,11 +150,18 @@ export async function sendDueReminderPushIfNeeded(options?: { force?: boolean })
   let sent = 0;
 
   for (const row of subscriptions) {
+    if (row.expirationTime && row.expirationTime <= now) {
+      skipped.expired += 1;
+      await db.delete(pushSubscriptions).where(eq(pushSubscriptions.id, row.id));
+      continue;
+    }
+
     const lastNotifiedAt = row.lastNotifiedAt?.getTime() ?? 0;
     const isCoolingDown = now.getTime() - lastNotifiedAt < NOTIFY_COOLDOWN_MS;
     const notIncreasedEnough = dueCount <= row.lastNotifiedDueCount;
 
     if (!options?.force && isCoolingDown && notIncreasedEnough) {
+      skipped.cooldown += 1;
       continue;
     }
 
@@ -145,9 +198,12 @@ export async function sendDueReminderPushIfNeeded(options?: { force?: boolean })
     } catch (error) {
       const statusCode = Number((error as { statusCode?: number })?.statusCode ?? 0);
       if (statusCode === 404 || statusCode === 410) {
+        skipped["permission-gone"] += 1;
         await db.delete(pushSubscriptions).where(eq(pushSubscriptions.id, row.id));
         continue;
       }
+
+      skipped["send-error"] += 1;
 
       await db
         .update(pushSubscriptions)
@@ -156,5 +212,57 @@ export async function sendDueReminderPushIfNeeded(options?: { force?: boolean })
     }
   }
 
-  return { sent, dueCount };
+  return {
+    sent,
+    dueCount,
+    threshold: DUE_THRESHOLD,
+    totalSubscriptions: subscriptions.length,
+    skipped,
+  } satisfies PushSendSummary;
+}
+
+export async function getPushDebugStatus() {
+  const configured = ensureWebPushConfigured();
+  const dueCount = await getDueCount();
+  const now = new Date();
+  const db = getDb();
+  const subscriptions = await db.select().from(pushSubscriptions);
+
+  const devices = subscriptions.map((row) => {
+    const expired = !!(row.expirationTime && row.expirationTime <= now);
+    const isCoolingDown =
+      now.getTime() - (row.lastNotifiedAt?.getTime() ?? 0) < NOTIFY_COOLDOWN_MS;
+    const notIncreasedEnough = dueCount <= row.lastNotifiedDueCount;
+    const wouldSkipByCooldown = isCoolingDown && notIncreasedEnough;
+    const belowThreshold = dueCount <= DUE_THRESHOLD;
+
+    const nextAction = !configured
+      ? "not-configured"
+      : expired
+        ? "expired"
+        : belowThreshold
+          ? "below-threshold"
+          : wouldSkipByCooldown
+            ? "cooldown"
+            : "will-send";
+
+    return {
+      id: row.id,
+      endpointTail: endpointTail(row.endpoint),
+      userAgent: row.userAgent,
+      expirationTime: row.expirationTime?.toISOString() ?? null,
+      lastNotifiedAt: row.lastNotifiedAt?.toISOString() ?? null,
+      lastNotifiedDueCount: row.lastNotifiedDueCount,
+      nextAction,
+    };
+  });
+
+  return {
+    configured,
+    dueCount,
+    threshold: DUE_THRESHOLD,
+    cooldownMs: NOTIFY_COOLDOWN_MS,
+    totalSubscriptions: subscriptions.length,
+    devices,
+  };
 }
