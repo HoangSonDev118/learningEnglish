@@ -22,7 +22,15 @@ export function TypingReviewCard({ card, onSubmit }: TypingReviewCardProps) {
   const [checked, setChecked] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showTapToFocus, setShowTapToFocus] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const isIOS = useRef<boolean>(false);
+
+  useEffect(() => {
+    if (typeof navigator === "undefined") return;
+    isIOS.current = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  }, []);
 
   useEffect(() => {
     // Transition effects can temporarily interrupt focus; retry shortly after mount/update.
@@ -31,12 +39,23 @@ export function TypingReviewCard({ card, onSubmit }: TypingReviewCardProps) {
 
     const rafId = window.requestAnimationFrame(focusNow);
     const timerId = window.setTimeout(focusNow, 220);
+    const iosFallbackId = window.setTimeout(() => {
+      const active = document.activeElement;
+      const isFocused = active === inputRef.current;
+      setShowTapToFocus(isIOS.current && !checked && !isFocused);
+    }, 260);
 
     return () => {
       window.cancelAnimationFrame(rafId);
       window.clearTimeout(timerId);
+      window.clearTimeout(iosFallbackId);
     };
-  }, [card.id]);
+  }, [card.id, checked]);
+
+  function handleTapToFocus() {
+    inputRef.current?.focus();
+    setShowTapToFocus(false);
+  }
 
   function checkAnswer() {
     const correct = isTypingAnswerCorrect(answer, card.word);
@@ -82,12 +101,22 @@ export function TypingReviewCard({ card, onSubmit }: TypingReviewCardProps) {
 
       {!checked ? (
         <div className="min-h-36 animate-fade-up">
+          {showTapToFocus && (
+            <button
+              type="button"
+              onClick={handleTapToFocus}
+              className="mb-3 w-full rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 text-sm font-medium text-violet-700"
+            >
+              Cham vao day de mo ban phim
+            </button>
+          )}
           <Input
             ref={inputRef}
             value={answer}
             onChange={(e) => setAnswer(e.target.value)}
             placeholder="Nhập từ tiếng Anh"
             className="h-12 text-lg"
+            onFocus={() => setShowTapToFocus(false)}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 e.preventDefault();
