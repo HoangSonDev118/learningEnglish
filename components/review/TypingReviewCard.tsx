@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { VocabularyCard, ReviewRating } from "@/types/vocab";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { isTypingAnswerCorrect } from "@/lib/srs/typing-review";
 import { speakEnglish } from "@/lib/utils/speech";
+import { playClickButtonSound, playEasySound, playClickAndEasyTogether } from "@/lib/utils/click-sound";
 
 type TypingReviewCardProps = {
   card: VocabularyCard;
@@ -21,12 +22,18 @@ export function TypingReviewCard({ card, onSubmit }: TypingReviewCardProps) {
   const [checked, setChecked] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, [card.id]);
 
   function checkAnswer() {
     const correct = isTypingAnswerCorrect(answer, card.word);
     setIsCorrect(correct);
     setChecked(true);
     speakEnglish(card.word);
+    if (correct) playEasySound();
   }
 
   async function handleSubmitCorrect(ratingIfCorrect: Exclude<ReviewRating, "again">) {
@@ -64,8 +71,9 @@ export function TypingReviewCard({ card, onSubmit }: TypingReviewCardProps) {
       </h2>
 
       {!checked ? (
-        <div className="space-y-3 min-h-36 animate-fade-up">
+        <div className="min-h-36 animate-fade-up">
           <Input
+            ref={inputRef}
             value={answer}
             onChange={(e) => setAnswer(e.target.value)}
             placeholder="Nhập từ tiếng Anh"
@@ -73,18 +81,19 @@ export function TypingReviewCard({ card, onSubmit }: TypingReviewCardProps) {
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 e.preventDefault();
-                checkAnswer();
+                if (answer.trim()) checkAnswer();
               }
             }}
           />
-          <div className="flex gap-3">
-            <Button className="flex-1" size="lg" onClick={checkAnswer} disabled={!answer.trim()}>
-              Kiểm tra (Enter)
+          <div className="flex gap-3 mt-6">
+            <Button className="flex-1" size="lg" onClick={() => { playClickButtonSound(); checkAnswer(); }} disabled={!answer.trim()}>
+              Kiểm tra<span className="hidden sm:inline"> (Enter)</span>
             </Button>
             <Button
               variant="outline"
               size="lg"
               onClick={() => {
+                playClickButtonSound();
                 setAnswer("");
                 setChecked(true);
                 setIsCorrect(false);
@@ -96,19 +105,34 @@ export function TypingReviewCard({ card, onSubmit }: TypingReviewCardProps) {
           </div>
         </div>
       ) : isCorrect ? (
-          <div className="space-y-3 min-h-36 animate-fade-up">
+          <div className="min-h-36 animate-fade-up">
           <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-center text-emerald-700 font-semibold">
             Chính xác! Chọn độ khó để cập nhật SRS.
           </div>
-          <div className="grid grid-cols-3 gap-3">
-            <Button variant="hard" onClick={() => handleSubmitCorrect("hard")} disabled={isSubmitting}>
-              Khó
+          <div className="grid grid-cols-3 gap-2 sm:gap-3 mt-6">
+            <Button
+              variant="hard"
+              onClick={() => { playClickButtonSound(); handleSubmitCorrect("hard"); }}
+              disabled={isSubmitting}
+              className="min-h-20 flex-col items-center gap-1 rounded-2xl px-2 py-3 text-center border-b-[4px] active:border-b-[2px] active:translate-y-[2px] border-b-orange-300"
+            >
+              <span className="text-base font-bold">Khó</span>
             </Button>
-            <Button variant="good" onClick={() => handleSubmitCorrect("good")} disabled={isSubmitting}>
-              Tốt
+            <Button
+              variant="good"
+              onClick={() => { playClickButtonSound(); handleSubmitCorrect("good"); }}
+              disabled={isSubmitting}
+              className="min-h-20 flex-col items-center gap-1 rounded-2xl px-2 py-3 text-center border-b-[4px] active:border-b-[2px] active:translate-y-[2px] border-b-blue-300"
+            >
+              <span className="text-base font-bold">Tốt</span>
             </Button>
-            <Button variant="easy" onClick={() => handleSubmitCorrect("easy")} disabled={isSubmitting}>
-              Dễ
+            <Button
+              variant="easy"
+              onClick={() => { playClickAndEasyTogether(); handleSubmitCorrect("easy"); }}
+              disabled={isSubmitting}
+              className="min-h-20 flex-col items-center gap-1 rounded-2xl px-2 py-3 text-center border-b-[4px] active:border-b-[2px] active:translate-y-[2px] border-b-green-300"
+            >
+              <span className="text-base font-bold">Dễ</span>
             </Button>
           </div>
         </div>
@@ -120,7 +144,7 @@ export function TypingReviewCard({ card, onSubmit }: TypingReviewCardProps) {
               Đáp án đúng: <span className="font-bold text-zinc-900">{card.word}</span>
             </p>
           </div>
-          <Button className="w-full" size="lg" onClick={handleContinueWrong} disabled={isSubmitting}>
+          <Button className="w-full" size="lg" onClick={() => { playClickButtonSound(); handleContinueWrong(); }} disabled={isSubmitting}>
             Tiếp tục
           </Button>
         </div>

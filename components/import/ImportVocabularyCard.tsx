@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { parseVocabText } from "@/lib/parser/vocab-parser";
 import { ParseResult } from "@/types/vocab";
-import { Upload, FileText, AlertTriangle, CheckCircle, X } from "lucide-react";
+import { Upload, FileText, AlertTriangle, CheckCircle, X, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { playClickButtonSound } from "@/lib/utils/click-sound";
 
@@ -18,17 +18,41 @@ export function ImportVocabularyCard() {
   const [showAllPreview, setShowAllPreview] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [isCheckingLibrary, setIsCheckingLibrary] = useState(false);
+  const [existingInLibrary, setExistingInLibrary] = useState<Set<string>>(new Set());
   const [importResult, setImportResult] = useState<{
     insertedCount: number;
     duplicatesSkipped: number;
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  async function checkAgainstLibrary(items: { word: string; meaning: string }[]) {
+    if (items.length === 0) return;
+    setIsCheckingLibrary(true);
+    try {
+      const res = await fetch("/api/vocabulary/check-existing", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ words: items.map((i) => i.word) }),
+      });
+      if (res.ok) {
+        const data = (await res.json()) as { existing?: string[] };
+        setExistingInLibrary(new Set((data.existing ?? []).map((w) => w.toLowerCase())));
+      }
+    } catch {
+      // Non-critical – preview still works without library check
+    } finally {
+      setIsCheckingLibrary(false);
+    }
+  }
+
   function processText(text: string, name: string) {
     const result = parseVocabText(text);
     setParseResult(result);
     setFileName(name);
     setShowAllPreview(false);
+    setExistingInLibrary(new Set());
+    void checkAgainstLibrary(result.validItems);
   }
 
   async function processExcel(file: File) {
@@ -92,6 +116,8 @@ export function ImportVocabularyCard() {
     setParseResult({ validItems, invalidLines });
     setFileName(file.name);
     setShowAllPreview(false);
+    setExistingInLibrary(new Set());
+    void checkAgainstLibrary(validItems);
   }
 
   async function handleFile(file: File) {
@@ -130,12 +156,22 @@ export function ImportVocabularyCard() {
   async function handleImport() {
     if (!parseResult) return;
 
+    // Only import words that are NOT already in the library
+    const newItems = parseResult.validItems.filter(
+      (item) => !existingInLibrary.has(item.word.toLowerCase())
+    );
+
+    if (newItems.length === 0) {
+      showToast("Tất cả từ đã có trong thư viện, không có từ mới để thêm", "info");
+      return;
+    }
+
     try {
       setIsImporting(true);
       const res = await fetch("/api/vocabulary/import", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items: parseResult.validItems }),
+        body: JSON.stringify({ items: newItems }),
       });
 
       const data = (await res.json()) as {
@@ -153,9 +189,9 @@ export function ImportVocabularyCard() {
       const duplicatesSkipped = data.duplicatesSkipped ?? 0;
       setImportResult({ insertedCount, duplicatesSkipped });
 
-      showToast(`Đã nhập ${insertedCount} từ`, "success");
-      if (duplicatesSkipped > 0) {
-        showToast(`Bỏ qua ${duplicatesSkipped} từ bị trùng`, "info");
+      showToast(`Đã nhập ${insertedCount} từ mới vào thư viện`, "success");
+      if (existingInLibrary.size > 0) {
+        showToast(`Bỏ qua ${existingInLibrary.size} từ đã có trong thư viện`, "info");
       }
 
       // Reset to initial state after a successful import.
@@ -172,10 +208,15 @@ export function ImportVocabularyCard() {
     setFileName("");
     setShowAllPreview(false);
     setImportResult(null);
+    setExistingInLibrary(new Set());
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   const validCount = parseResult?.validItems.length ?? 0;
+  const newCount = (parseResult?.validItems ?? []).filter(
+    (item) => !existingInLibrary.has(item.word.toLowerCase())
+  ).length;
+  const existingCount = existingInLibrary.size;
   const previewItems = showAllPreview
     ? parseResult?.validItems ?? []
     : (parseResult?.validItems ?? []).slice(0, 10);
@@ -236,6 +277,20 @@ export function ImportVocabularyCard() {
                 <CheckCircle className="h-3 w-3 mr-1" />
                 {validCount} hợp lệ
               </Badge>
+              {isCheckingLibrary && (
+                <Badge variant="secondary">Đang kiểm tra thư viện...</Badge>
+              )}
+              {!isCheckingLibrary && existingCount > 0 && (
+                <Badge variant="due">
+                  <BookOpen className="h-3 w-3 mr-1" />
+                  {existingCount} đã có trong thư viện
+                </Badge>
+              )}
+              {!isCheckingLibrary && existingCount > 0 && (
+                <Badge variant="mastered">
+                  {newCount} từ mới sẽ được thêm
+                </Badge>
+              )}
               {importResult && importResult.duplicatesSkipped > 0 && (
                 <Badge variant="secondary">
                   {importResult.duplicatesSkipped} bản ghi trùng (đã bỏ qua)
@@ -288,15 +343,35 @@ export function ImportVocabularyCard() {
                       <tr>
                         <th className="px-3 py-2 text-left font-semibold">Tiếng Anh</th>
                         <th className="px-3 py-2 text-left font-semibold">Tiếng Việt</th>
+                        <th className="px-3 py-2 text-left font-semibold">Trạng thái</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-zinc-100">
-                      {previewItems.map((item, idx) => (
-                        <tr key={`${item.word}-${item.meaning}-${idx}`}>
-                          <td className="px-3 py-2 text-zinc-800">{item.word}</td>
-                          <td className="px-3 py-2 text-zinc-600">{item.meaning}</td>
-                        </tr>
-                      ))}
+                      {previewItems.map((item, idx) => {
+                        const inLibrary = existingInLibrary.has(item.word.toLowerCase());
+                        return (
+                          <tr
+                            key={`${item.word}-${item.meaning}-${idx}`}
+                            className={inLibrary ? "opacity-50 bg-amber-50" : "hover:bg-violet-50/40"}
+                          >
+                            <td className="px-3 py-2 text-zinc-800">{item.word}</td>
+                            <td className="px-3 py-2 text-zinc-600">{item.meaning}</td>
+                            <td className="px-3 py-2">
+                              {isCheckingLibrary ? (
+                                <span className="text-xs text-zinc-400">...</span>
+                              ) : inLibrary ? (
+                                <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full whitespace-nowrap">
+                                  đã có
+                                </span>
+                              ) : (
+                                <span className="text-xs bg-emerald-100 text-emerald-600 px-2 py-0.5 rounded-full">
+                                  mới
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -304,17 +379,29 @@ export function ImportVocabularyCard() {
             )}
 
             {validCount > 0 ? (
-              <Button
-                onClick={async () => {
-                  playClickButtonSound();
-                  await handleImport();
-                }}
-                className="w-full"
-                size="lg"
-                disabled={isImporting}
-              >
-                {isImporting ? "Đang nhập..." : `Nhập ${validCount} từ vào bộ học`}
-              </Button>
+              newCount > 0 ? (
+                <Button
+                  onClick={async () => {
+                    playClickButtonSound();
+                    await handleImport();
+                  }}
+                  className="w-full"
+                  size="lg"
+                  disabled={isImporting || isCheckingLibrary}
+                >
+                  {isImporting
+                    ? "Đang nhập..."
+                    : isCheckingLibrary
+                    ? "Đang kiểm tra thư viện..."
+                    : existingCount > 0
+                    ? `Thêm ${newCount} từ mới (bỏ qua ${existingCount} từ đã có)`
+                    : `Nhập ${newCount} từ vào bộ học`}
+                </Button>
+              ) : (
+                <p className="text-center text-sm text-amber-600 py-2 bg-amber-50 rounded-xl border border-amber-200 px-4">
+                  Tất cả {validCount} từ đã có trong thư viện, không có từ mới để thêm
+                </p>
+              )
             ) : (
               <p className="text-center text-sm text-zinc-400 py-2">
                 Không có từ mới để nhập

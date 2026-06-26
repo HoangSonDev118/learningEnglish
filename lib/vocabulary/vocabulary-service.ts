@@ -314,6 +314,17 @@ export async function importVocabularyItems(items: ImportInput[]) {
   }
 }
 
+export async function checkExistingWords(words: string[]): Promise<string[]> {
+  if (words.length === 0) return [];
+  const db = getDb();
+  const lowerWords = words.map((w) => w.toLowerCase());
+  const rows = await db
+    .select({ word: vocabularyCards.word })
+    .from(vocabularyCards)
+    .where(sql`LOWER(${vocabularyCards.word}) = ANY(ARRAY[${sql.join(lowerWords.map((w) => sql`${w}`), sql`, `)}])`);
+  return rows.map((r) => r.word.toLowerCase());
+}
+
 export async function getDueSessionItems(): Promise<ReviewSessionItem[]> {
   const db = getDb();
   const rows = await db
