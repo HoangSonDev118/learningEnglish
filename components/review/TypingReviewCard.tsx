@@ -45,26 +45,33 @@ export function TypingReviewCard({ card, onSubmit, focusAfterMs = 0 }: TypingRev
     // Transition effects can temporarily interrupt focus; retry shortly after mount/update.
     let rafId = 0;
     let retryId = 0;
+    let lateRetryId = 0;
+    let finalRetryId = 0;
 
     const runFocus = () => {
       const focusNow = () => inputRef.current?.focus();
       focusNow();
       rafId = window.requestAnimationFrame(focusNow);
       retryId = window.setTimeout(focusNow, 120);
+      lateRetryId = window.setTimeout(focusNow, 360);
+      finalRetryId = window.setTimeout(focusNow, 680);
     };
 
-    const startDelay = Math.max(0, focusAfterMs);
+    const iosExtraDelay = isIOS.current ? 320 : 0;
+    const startDelay = Math.max(0, focusAfterMs + iosExtraDelay);
     const startId = window.setTimeout(runFocus, startDelay);
     const iosFallbackId = window.setTimeout(() => {
       const active = document.activeElement;
       const isFocused = active === inputRef.current;
       setShowTapToFocus(isIOS.current && !isFocused);
-    }, startDelay + 260);
+    }, startDelay + 760);
 
     return () => {
       window.cancelAnimationFrame(rafId);
       window.clearTimeout(startId);
       window.clearTimeout(retryId);
+      window.clearTimeout(lateRetryId);
+      window.clearTimeout(finalRetryId);
       window.clearTimeout(iosFallbackId);
     };
   }, [card.id, focusAfterMs]);
