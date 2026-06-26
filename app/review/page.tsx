@@ -12,16 +12,20 @@ import {
   ReviewSessionSummary,
   VocabularyExample,
 } from "@/types/vocab";
-import { ArrowLeft, BookOpenText } from "lucide-react";
+import { ArrowLeft, BookOpenText, RotateCcw } from "lucide-react";
 import Link from "next/link";
 import { TypingReviewCard } from "@/components/review/TypingReviewCard";
 import { ExampleList } from "@/components/vocabulary/ExampleList";
 import { Button } from "@/components/ui/button";
 import { speakEnglish } from "@/lib/utils/speech";
 import { clearClientCache, getClientCache, setClientCache } from "@/lib/utils/client-cache";
+import { playClickButtonSound } from "@/lib/utils/click-sound";
 
-const REVIEW_CACHE_KEY = "review-session-items";
+const REVIEW_DUE_CACHE_KEY = "review-session-items";
 const REVIEW_CACHE_TTL = 30_000;
+const RANDOM_REVIEW_LIMIT = 30;
+
+type SessionSource = "due" | "library-random";
 
 export default function ReviewPage() {
   type PendingReviewRequest = {
@@ -37,6 +41,7 @@ export default function ReviewPage() {
   const [showAnswer, setShowAnswer] = useState(false);
   const [sessionStarted, setSessionStarted] = useState(false);
   const [sessionLoading, setSessionLoading] = useState(true);
+  const [sessionSource, setSessionSource] = useState<SessionSource>("due");
   const [summary, setSummary] = useState<ReviewSessionSummary | null>(null);
   const [counts, setCounts] = useState({ again: 0, hard: 0, good: 0, easy: 0 });
   const [examples, setExamples] = useState<VocabularyExample[]>([]);
@@ -95,12 +100,16 @@ export default function ReviewPage() {
     [flushSyncQueue]
   );
 
-  async function loadSession() {
-    const cached = getClientCache<ReviewSessionItem[]>(REVIEW_CACHE_KEY, REVIEW_CACHE_TTL);
+  async function loadSession(source: SessionSource = "due") {
+    const isDueSession = source === "due";
+    const cached = isDueSession
+      ? getClientCache<ReviewSessionItem[]>(REVIEW_DUE_CACHE_KEY, REVIEW_CACHE_TTL)
+      : null;
     const hasWarmCache = Boolean(cached && cached.length > 0);
 
     if (hasWarmCache) {
       const warmCacheItems = cached as ReviewSessionItem[];
+      setSessionSource(source);
       setSessionItems(warmCacheItems);
       setSessionStarted(true);
       setCurrentIndex(0);
@@ -114,7 +123,10 @@ export default function ReviewPage() {
 
     try {
       if (!hasWarmCache) setSessionLoading(true);
-      const res = await fetch("/api/vocabulary/due", { cache: "no-store" });
+      const endpoint = isDueSession
+        ? "/api/vocabulary/due"
+        : `/api/vocabulary/due?mode=library-random&limit=${RANDOM_REVIEW_LIMIT}`;
+      const res = await fetch(endpoint, { cache: "no-store" });
       const data = (await res.json()) as {
         items?: ReviewSessionItem[];
         error?: string;
@@ -129,11 +141,14 @@ export default function ReviewPage() {
 
       const items = data.items ?? [];
       // Keep current UI stable when loading from cache to avoid random card swaps.
-      setClientCache(REVIEW_CACHE_KEY, items);
+      if (isDueSession) {
+        setClientCache(REVIEW_DUE_CACHE_KEY, items);
+      }
       if (hasWarmCache) {
         return;
       }
 
+      setSessionSource(source);
       setSessionItems(items);
       setSessionStarted(items.length > 0);
       setCurrentIndex(0);
@@ -142,6 +157,10 @@ export default function ReviewPage() {
       setCounts({ again: 0, hard: 0, good: 0, easy: 0 });
       setExamples([]);
       setShowExamples(false);
+
+      if (!isDueSession && items.length === 0) {
+        showToast("Thư viện chưa có từ để ôn tập", "error");
+      }
     } catch {
       if (!hasWarmCache) showToast("Không thể tải thẻ đến hạn", "error");
     } finally {
@@ -249,7 +268,7 @@ export default function ReviewPage() {
         goodCount: nextCounts.good,
         easyCount: nextCounts.easy,
       });
-      clearClientCache(REVIEW_CACHE_KEY);
+      clearClientCache(REVIEW_DUE_CACHE_KEY);
       return;
     }
 
@@ -257,7 +276,9 @@ export default function ReviewPage() {
     setShowAnswer(false);
     setShowExamples(false);
     setExamples([]);
-    setClientCache(REVIEW_CACHE_KEY, sessionItems.slice(nextIndex));
+    if (sessionSource === "due") {
+      setClientCache(REVIEW_DUE_CACHE_KEY, sessionItems.slice(nextIndex));
+    }
   }
 
   function handleFlashcardRate(rating: ReviewRating) {
@@ -295,7 +316,7 @@ export default function ReviewPage() {
   }
 
   function handleRestart() {
-    loadSession();
+    loadSession("library-random");
   }
 
   if (sessionLoading) {
@@ -321,12 +342,24 @@ export default function ReviewPage() {
           <p className="mt-2 text-sm text-zinc-400">
             Hiện không có thẻ đến hạn. Quay lại sau nhé!
           </p>
-          <Link
-            href="/"
-            className="mt-6 flex items-center gap-2 rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-violet-700 transition-colors"
-          >
-            Về tổng quan
-          </Link>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+            <Button
+              onClick={() => {
+                playClickButtonSound();
+                loadSession("library-random");
+              }}
+              className="gap-2"
+            >
+              <RotateCcw className="h-4 w-4" />
+              Ôn tập lại 30 từ
+            </Button>
+            <Link
+              href="/"
+              className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-5 py-2.5 text-sm font-semibold text-zinc-700 hover:bg-zinc-100 transition-colors"
+            >
+              Về tổng quan
+            </Link>
+          </div>
         </div>
       </div>
     );

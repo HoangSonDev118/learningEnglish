@@ -5,6 +5,7 @@ import { ReviewSessionSummary } from "@/types/vocab";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Trophy, ArrowLeft, RotateCcw } from "lucide-react";
+import { playClickButtonSound } from "@/lib/utils/click-sound";
 
 type Props = {
   summary: ReviewSessionSummary;
@@ -49,14 +50,20 @@ export function ReviewSummary({ summary, onRestart }: Props) {
 
       <div className="mt-6 flex gap-3">
         <Link href="/">
-          <Button variant="outline" className="gap-2">
+          <Button variant="outline" className="gap-2 bg-white hover:bg-zinc-100" onClick={playClickButtonSound}>
             <ArrowLeft className="h-4 w-4" />
             Tổng quan
           </Button>
         </Link>
-        <Button onClick={onRestart} className="gap-2">
+        <Button
+          onClick={() => {
+            playClickButtonSound();
+            onRestart();
+          }}
+          className="gap-2"
+        >
           <RotateCcw className="h-4 w-4" />
-          Ôn tập lại
+          Ôn tập lại 30 từ
         </Button>
       </div>
     </div>

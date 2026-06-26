@@ -325,6 +325,17 @@ export async function checkExistingWords(words: string[]): Promise<string[]> {
   return rows.map((r) => r.word.toLowerCase());
 }
 
+function toSessionItems(cards: VocabularyCard[]): ReviewSessionItem[] {
+  const typingCandidates = shuffleArray(cards.filter((c) => isTypingEligible(c)));
+  const typingQuota = Math.max(0, Math.floor(cards.length * 0.3));
+  const typingSet = new Set(typingCandidates.slice(0, typingQuota).map((c) => c.id));
+
+  return cards.map((card) => ({
+    card,
+    mode: typingSet.has(card.id) ? "typing" : "flashcard",
+  }));
+}
+
 export async function getDueSessionItems(): Promise<ReviewSessionItem[]> {
   const db = getDb();
   const rows = await db
@@ -343,14 +354,14 @@ export async function getDueSessionItems(): Promise<ReviewSessionItem[]> {
     );
 
   const cards = shuffleArray(rows.map(mapCard));
-  const typingCandidates = shuffleArray(cards.filter((c) => isTypingEligible(c)));
-  const typingQuota = Math.max(0, Math.floor(cards.length * 0.3));
-  const typingSet = new Set(typingCandidates.slice(0, typingQuota).map((c) => c.id));
+  return toSessionItems(cards);
+}
 
-  return cards.map((card) => ({
-    card,
-    mode: typingSet.has(card.id) ? "typing" : "flashcard",
-  }));
+export async function getRandomLibrarySessionItems(limit = 30): Promise<ReviewSessionItem[]> {
+  const cards = await getLibraryCards();
+  const cappedLimit = Math.max(1, limit);
+  const randomCards = shuffleArray(cards).slice(0, cappedLimit);
+  return toSessionItems(randomCards);
 }
 
 export async function submitFlashcardReview(input: {
