@@ -56,6 +56,7 @@ export default function ReviewPage() {
   const syncQueueRef = useRef<PendingReviewRequest[]>([]);
   const isFlushingRef = useRef(false);
   const transitionTimerRef = useRef<number | null>(null);
+  const isIOSRef = useRef(false);
 
   const currentItem = sessionItems[currentIndex];
   const currentCard = currentItem?.card;
@@ -113,6 +114,9 @@ export default function ReviewPage() {
   );
 
   useEffect(() => {
+    if (typeof navigator !== "undefined") {
+      isIOSRef.current = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    }
     return () => clearTransitionTimer();
   }, [clearTransitionTimer]);
 
@@ -279,8 +283,12 @@ export default function ReviewPage() {
       good: counts.good + (resolvedRating === "good" ? 1 : 0),
       easy: counts.easy + (resolvedRating === "easy" ? 1 : 0),
     };
+    const isTypingCard = currentItem?.mode === "typing";
+    const typingOnIOS = isTypingCard && isIOSRef.current;
+    const outMs = typingOnIOS ? 0 : CARD_SWIPE_OUT_MS;
+    const inMs = typingOnIOS ? 0 : CARD_SWIPE_IN_MS;
 
-    setTransitionPhase("out");
+    setTransitionPhase(outMs > 0 ? "out" : "idle");
     setCounts((prev) => ({ ...prev, [resolvedRating]: prev[resolvedRating] + 1 }));
     clearTransitionTimer();
     transitionTimerRef.current = window.setTimeout(() => {
@@ -305,12 +313,16 @@ export default function ReviewPage() {
         setClientCache(REVIEW_DUE_CACHE_KEY, sessionItems.slice(nextIndex));
       }
 
-      setTransitionPhase("in");
-      clearTransitionTimer();
-      transitionTimerRef.current = window.setTimeout(() => {
+      if (inMs > 0) {
+        setTransitionPhase("in");
+        clearTransitionTimer();
+        transitionTimerRef.current = window.setTimeout(() => {
+          setTransitionPhase("idle");
+        }, inMs);
+      } else {
         setTransitionPhase("idle");
-      }, CARD_SWIPE_IN_MS);
-    }, CARD_SWIPE_OUT_MS);
+      }
+    }, outMs);
   }
 
   function handleFlashcardRate(rating: ReviewRating) {

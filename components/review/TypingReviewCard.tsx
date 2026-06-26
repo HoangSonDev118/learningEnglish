@@ -33,6 +33,14 @@ export function TypingReviewCard({ card, onSubmit }: TypingReviewCardProps) {
   }, []);
 
   useEffect(() => {
+    setAnswer("");
+    setChecked(false);
+    setIsCorrect(false);
+    setIsSubmitting(false);
+    setShowTapToFocus(false);
+  }, [card.id]);
+
+  useEffect(() => {
     // Transition effects can temporarily interrupt focus; retry shortly after mount/update.
     const focusNow = () => inputRef.current?.focus();
     focusNow();
@@ -50,7 +58,7 @@ export function TypingReviewCard({ card, onSubmit }: TypingReviewCardProps) {
       window.clearTimeout(timerId);
       window.clearTimeout(iosFallbackId);
     };
-  }, [card.id, checked]);
+  }, [card.id]);
 
   function handleTapToFocus() {
     inputRef.current?.focus();
@@ -69,9 +77,6 @@ export function TypingReviewCard({ card, onSubmit }: TypingReviewCardProps) {
     setIsSubmitting(true);
     try {
       await Promise.resolve(onSubmit({ typedAnswer: answer, isCorrect: true, ratingIfCorrect }));
-      setAnswer("");
-      setChecked(false);
-      setIsCorrect(false);
     } finally {
       setIsSubmitting(false);
     }
@@ -81,9 +86,6 @@ export function TypingReviewCard({ card, onSubmit }: TypingReviewCardProps) {
     setIsSubmitting(true);
     try {
       await Promise.resolve(onSubmit({ typedAnswer: answer, isCorrect: false }));
-      setAnswer("");
-      setChecked(false);
-      setIsCorrect(false);
     } finally {
       setIsSubmitting(false);
     }
