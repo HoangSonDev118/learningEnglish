@@ -24,8 +24,11 @@ import { playClickButtonSound } from "@/lib/utils/click-sound";
 const REVIEW_DUE_CACHE_KEY = "review-session-items";
 const REVIEW_CACHE_TTL = 30_000;
 const RANDOM_REVIEW_LIMIT = 30;
+const CARD_SWIPE_OUT_MS = 480;
+const CARD_SWIPE_IN_MS = 460;
 
 type SessionSource = "due" | "library-random";
+type TransitionPhase = "idle" | "out" | "in";
 
 export default function ReviewPage() {
   type PendingReviewRequest = {
@@ -42,6 +45,7 @@ export default function ReviewPage() {
   const [sessionStarted, setSessionStarted] = useState(false);
   const [sessionLoading, setSessionLoading] = useState(true);
   const [sessionSource, setSessionSource] = useState<SessionSource>("due");
+  const [transitionPhase, setTransitionPhase] = useState<TransitionPhase>("idle");
   const [summary, setSummary] = useState<ReviewSessionSummary | null>(null);
   const [counts, setCounts] = useState({ again: 0, hard: 0, good: 0, easy: 0 });
   const [examples, setExamples] = useState<VocabularyExample[]>([]);
@@ -51,9 +55,17 @@ export default function ReviewPage() {
   const [pendingSyncCount, setPendingSyncCount] = useState(0);
   const syncQueueRef = useRef<PendingReviewRequest[]>([]);
   const isFlushingRef = useRef(false);
+  const transitionTimerRef = useRef<number | null>(null);
 
   const currentItem = sessionItems[currentIndex];
   const currentCard = currentItem?.card;
+
+  const clearTransitionTimer = useCallback(() => {
+    if (transitionTimerRef.current !== null) {
+      window.clearTimeout(transitionTimerRef.current);
+      transitionTimerRef.current = null;
+    }
+  }, []);
 
   const flushSyncQueue = useCallback(async () => {
     if (isFlushingRef.current) return;
@@ -100,6 +112,10 @@ export default function ReviewPage() {
     [flushSyncQueue]
   );
 
+  useEffect(() => {
+    return () => clearTransitionTimer();
+  }, [clearTransitionTimer]);
+
   async function loadSession(source: SessionSource = "due") {
     const isDueSession = source === "due";
     const cached = isDueSession
@@ -115,6 +131,7 @@ export default function ReviewPage() {
       setCurrentIndex(0);
       setShowAnswer(false);
       setSummary(null);
+      setTransitionPhase("idle");
       setCounts({ again: 0, hard: 0, good: 0, easy: 0 });
       setExamples([]);
       setShowExamples(false);
@@ -154,6 +171,7 @@ export default function ReviewPage() {
       setCurrentIndex(0);
       setShowAnswer(false);
       setSummary(null);
+      setTransitionPhase("idle");
       setCounts({ again: 0, hard: 0, good: 0, easy: 0 });
       setExamples([]);
       setShowExamples(false);
@@ -215,7 +233,7 @@ export default function ReviewPage() {
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
-      if (summary) return;
+      if (summary || transitionPhase !== "idle") return;
       if (!sessionStarted || sessionItems.length === 0) return;
       if (!currentItem || currentItem.mode === "typing") return;
 
@@ -241,7 +259,7 @@ export default function ReviewPage() {
         if (rating) handleFlashcardRate(rating);
       }
     },
-    [showAnswer, sessionStarted, sessionItems, summary, currentItem] // eslint-disable-line react-hooks/exhaustive-deps
+    [showAnswer, sessionStarted, sessionItems, summary, currentItem, transitionPhase] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   useEffect(() => {
@@ -250,39 +268,53 @@ export default function ReviewPage() {
   }, [handleKeyDown]);
 
   function moveNext(resolvedRating: ReviewRating) {
+    if (transitionPhase !== "idle") return;
+
+    const activeIndex = currentIndex;
+    const nextIndex = activeIndex + 1;
+    const total = sessionItems.length;
+    const nextCounts = {
+      again: counts.again + (resolvedRating === "again" ? 1 : 0),
+      hard: counts.hard + (resolvedRating === "hard" ? 1 : 0),
+      good: counts.good + (resolvedRating === "good" ? 1 : 0),
+      easy: counts.easy + (resolvedRating === "easy" ? 1 : 0),
+    };
+
+    setTransitionPhase("out");
     setCounts((prev) => ({ ...prev, [resolvedRating]: prev[resolvedRating] + 1 }));
+    clearTransitionTimer();
+    transitionTimerRef.current = window.setTimeout(() => {
+      if (nextIndex >= total) {
+        setSummary({
+          reviewedCount: total,
+          againCount: nextCounts.again,
+          hardCount: nextCounts.hard,
+          goodCount: nextCounts.good,
+          easyCount: nextCounts.easy,
+        });
+        setTransitionPhase("idle");
+        clearClientCache(REVIEW_DUE_CACHE_KEY);
+        return;
+      }
 
-    const nextIndex = currentIndex + 1;
-    if (nextIndex >= sessionItems.length) {
-      const total = sessionItems.length;
-      const nextCounts = {
-        again: counts.again + (resolvedRating === "again" ? 1 : 0),
-        hard: counts.hard + (resolvedRating === "hard" ? 1 : 0),
-        good: counts.good + (resolvedRating === "good" ? 1 : 0),
-        easy: counts.easy + (resolvedRating === "easy" ? 1 : 0),
-      };
-      setSummary({
-        reviewedCount: total,
-        againCount: nextCounts.again,
-        hardCount: nextCounts.hard,
-        goodCount: nextCounts.good,
-        easyCount: nextCounts.easy,
-      });
-      clearClientCache(REVIEW_DUE_CACHE_KEY);
-      return;
-    }
+      setCurrentIndex(nextIndex);
+      setShowAnswer(false);
+      setShowExamples(false);
+      setExamples([]);
+      if (sessionSource === "due") {
+        setClientCache(REVIEW_DUE_CACHE_KEY, sessionItems.slice(nextIndex));
+      }
 
-    setCurrentIndex(nextIndex);
-    setShowAnswer(false);
-    setShowExamples(false);
-    setExamples([]);
-    if (sessionSource === "due") {
-      setClientCache(REVIEW_DUE_CACHE_KEY, sessionItems.slice(nextIndex));
-    }
+      setTransitionPhase("in");
+      clearTransitionTimer();
+      transitionTimerRef.current = window.setTimeout(() => {
+        setTransitionPhase("idle");
+      }, CARD_SWIPE_IN_MS);
+    }, CARD_SWIPE_OUT_MS);
   }
 
   function handleFlashcardRate(rating: ReviewRating) {
-    if (!currentCard) return;
+    if (!currentCard || transitionPhase !== "idle") return;
     enqueueSyncRequest({
       endpoint: "/api/review/flashcard",
       body: { cardId: currentCard.id, rating },
@@ -296,7 +328,7 @@ export default function ReviewPage() {
     isCorrect: boolean;
     ratingIfCorrect?: Exclude<ReviewRating, "again">;
   }) {
-    if (!currentCard) return;
+    if (!currentCard || transitionPhase !== "idle") return;
     const resolvedRating: ReviewRating = payload.isCorrect
       ? payload.ratingIfCorrect ?? "good"
       : "again";
@@ -390,8 +422,11 @@ export default function ReviewPage() {
       </div>
 
       <p
-        className="mb-4 min-h-5 text-xs text-right transition-opacity duration-200 text-zinc-400"
-        style={{ opacity: pendingSyncCount > 0 ? 1 : 0 }}
+        className={`mb-4 min-h-5 text-xs text-right text-zinc-400 transition-all duration-350 ease-in-out ${
+          pendingSyncCount > 0
+            ? "translate-y-0 scale-100 opacity-100"
+            : "-translate-y-1 scale-95 opacity-0"
+        }`}
       >
         Đang đồng bộ nền: {pendingSyncCount}
       </p>
@@ -403,19 +438,32 @@ export default function ReviewPage() {
 
       {currentItem.mode === "flashcard" ? (
         <>
-          <ReviewCard
+          <div
             key={currentCard.id}
-            card={currentCard}
-            showAnswer={showAnswer}
-            onShowAnswer={() => {
-              setShowAnswer(true);
-              speakEnglish(currentCard.word);
-            }}
-          />
+            className={
+              transitionPhase === "out"
+                ? "review-card-swipe-out"
+                : transitionPhase === "in"
+                  ? "review-card-swipe-in"
+                  : ""
+            }
+          >
+            <ReviewCard
+              card={currentCard}
+              showAnswer={showAnswer}
+              onShowAnswer={() => {
+                if (transitionPhase !== "idle") return;
+                setShowAnswer(true);
+                speakEnglish(currentCard.word);
+              }}
+            />
+          </div>
           {showAnswer && (
             <>
-              <ReviewActions onRate={handleFlashcardRate} />
-              <div className="mt-6 w-full max-w-2xl mx-auto">
+              <div className={transitionPhase === "out" ? "review-actions-fall-out" : ""}>
+                <ReviewActions onRate={handleFlashcardRate} />
+              </div>
+              <div className={`mt-6 w-full max-w-2xl mx-auto ${transitionPhase === "out" ? "review-examples-out" : ""}`}>
                 <button
                   onClick={async () => {
                     const next = !showExamples;
@@ -449,8 +497,19 @@ export default function ReviewPage() {
         </>
       ) : (
         <>
-          <TypingReviewCard key={currentCard.id} card={currentCard} onSubmit={handleTypingSubmit} />
-          <div className="mt-6 w-full max-w-2xl mx-auto rounded-2xl border border-zinc-100 bg-white p-4">
+          <div
+            key={currentCard.id}
+            className={
+              transitionPhase === "out"
+                ? "review-card-swipe-out"
+                : transitionPhase === "in"
+                  ? "review-card-swipe-in"
+                  : ""
+            }
+          >
+            <TypingReviewCard card={currentCard} onSubmit={handleTypingSubmit} />
+          </div>
+          <div className={`mt-6 w-full max-w-2xl mx-auto rounded-2xl border border-zinc-100 bg-white p-4 ${transitionPhase === "out" ? "review-examples-out" : ""}`}>
             <div className="flex items-center justify-between mb-3">
               <p className="text-sm font-semibold text-zinc-700 flex items-center gap-1.5">
                 <BookOpenText className="h-4 w-4" />

@@ -65,7 +65,7 @@ export function ReviewActions({ onRate }: Props) {
               }
               onRate(r.rating);
             }}
-            className={`min-h-24 flex-col items-center gap-1 rounded-2xl px-2 py-3 text-center border-b-[4px] active:border-b-[2px] active:translate-y-[2px] ${
+            className={`review-action-item min-h-24 flex-col items-center gap-1 rounded-2xl px-2 py-3 text-center border-b-4 active:border-b-2 active:translate-y-0.5 ${
               r.variant === "again"
                 ? "border-b-red-300"
                 : r.variant === "hard"
