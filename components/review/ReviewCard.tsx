@@ -2,9 +2,10 @@
 
 import { VocabularyCard } from "@/types/vocab";
 import { cn } from "@/lib/utils/cn";
-import { Eye } from "lucide-react";
+import { Eye, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { playClickButtonSound } from "@/lib/utils/click-sound";
+import { speakEnglish } from "@/lib/utils/speech";
 
 type Props = {
   card: VocabularyCard;
@@ -28,6 +29,14 @@ export function ReviewCard({ card, showAnswer, onShowAnswer }: Props) {
           <h1 className="text-3xl sm:text-4xl font-bold text-zinc-900 tracking-tight leading-tight">
             {card.word}
           </h1>
+          <button
+            type="button"
+            onClick={() => speakEnglish(card.word)}
+            aria-label={`Phat am tu ${card.word}`}
+            className="mt-3 inline-flex h-9 w-9 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-600 transition-colors hover:bg-zinc-50 hover:text-zinc-800"
+          >
+            <Volume2 className="h-4 w-4" />
+          </button>
           <p className="mt-3 text-sm text-zinc-400">
             lần lặp #{card.repetition} · khoảng {card.interval} ngày
           </p>
