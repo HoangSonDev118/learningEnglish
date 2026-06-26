@@ -10,6 +10,7 @@ import { playClickButtonSound, playEasySound, playClickAndEasyTogether } from "@
 
 type TypingReviewCardProps = {
   card: VocabularyCard;
+  focusAfterMs?: number;
   onSubmit: (payload: {
     typedAnswer: string;
     isCorrect: boolean;
@@ -17,7 +18,7 @@ type TypingReviewCardProps = {
   }) => void | Promise<void>;
 };
 
-export function TypingReviewCard({ card, onSubmit }: TypingReviewCardProps) {
+export function TypingReviewCard({ card, onSubmit, focusAfterMs = 0 }: TypingReviewCardProps) {
   const [answer, setAnswer] = useState("");
   const [checked, setChecked] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
@@ -42,23 +43,31 @@ export function TypingReviewCard({ card, onSubmit }: TypingReviewCardProps) {
 
   useEffect(() => {
     // Transition effects can temporarily interrupt focus; retry shortly after mount/update.
-    const focusNow = () => inputRef.current?.focus();
-    focusNow();
+    let rafId = 0;
+    let retryId = 0;
 
-    const rafId = window.requestAnimationFrame(focusNow);
-    const timerId = window.setTimeout(focusNow, 220);
+    const runFocus = () => {
+      const focusNow = () => inputRef.current?.focus();
+      focusNow();
+      rafId = window.requestAnimationFrame(focusNow);
+      retryId = window.setTimeout(focusNow, 120);
+    };
+
+    const startDelay = Math.max(0, focusAfterMs);
+    const startId = window.setTimeout(runFocus, startDelay);
     const iosFallbackId = window.setTimeout(() => {
       const active = document.activeElement;
       const isFocused = active === inputRef.current;
-      setShowTapToFocus(isIOS.current && !checked && !isFocused);
-    }, 260);
+      setShowTapToFocus(isIOS.current && !isFocused);
+    }, startDelay + 260);
 
     return () => {
       window.cancelAnimationFrame(rafId);
-      window.clearTimeout(timerId);
+      window.clearTimeout(startId);
+      window.clearTimeout(retryId);
       window.clearTimeout(iosFallbackId);
     };
-  }, [card.id]);
+  }, [card.id, focusAfterMs]);
 
   function handleTapToFocus() {
     inputRef.current?.focus();
