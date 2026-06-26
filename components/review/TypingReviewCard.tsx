@@ -25,7 +25,17 @@ export function TypingReviewCard({ card, onSubmit }: TypingReviewCardProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    inputRef.current?.focus();
+    // Transition effects can temporarily interrupt focus; retry shortly after mount/update.
+    const focusNow = () => inputRef.current?.focus();
+    focusNow();
+
+    const rafId = window.requestAnimationFrame(focusNow);
+    const timerId = window.setTimeout(focusNow, 220);
+
+    return () => {
+      window.cancelAnimationFrame(rafId);
+      window.clearTimeout(timerId);
+    };
   }, [card.id]);
 
   function checkAnswer() {
@@ -114,7 +124,7 @@ export function TypingReviewCard({ card, onSubmit }: TypingReviewCardProps) {
               variant="hard"
               onClick={() => { playClickButtonSound(); handleSubmitCorrect("hard"); }}
               disabled={isSubmitting}
-              className="min-h-20 flex-col items-center gap-1 rounded-2xl px-2 py-3 text-center border-b-[4px] active:border-b-[2px] active:translate-y-[2px] border-b-orange-300"
+              className="min-h-20 flex-col items-center gap-1 rounded-2xl px-2 py-3 text-center border-b-4 active:border-b-2 active:translate-y-0.5 border-b-orange-300"
             >
               <span className="text-base font-bold">Khó</span>
             </Button>
@@ -122,7 +132,7 @@ export function TypingReviewCard({ card, onSubmit }: TypingReviewCardProps) {
               variant="good"
               onClick={() => { playClickButtonSound(); handleSubmitCorrect("good"); }}
               disabled={isSubmitting}
-              className="min-h-20 flex-col items-center gap-1 rounded-2xl px-2 py-3 text-center border-b-[4px] active:border-b-[2px] active:translate-y-[2px] border-b-blue-300"
+              className="min-h-20 flex-col items-center gap-1 rounded-2xl px-2 py-3 text-center border-b-4 active:border-b-2 active:translate-y-0.5 border-b-blue-300"
             >
               <span className="text-base font-bold">Tốt</span>
             </Button>
@@ -130,7 +140,7 @@ export function TypingReviewCard({ card, onSubmit }: TypingReviewCardProps) {
               variant="easy"
               onClick={() => { playClickAndEasyTogether(); handleSubmitCorrect("easy"); }}
               disabled={isSubmitting}
-              className="min-h-20 flex-col items-center gap-1 rounded-2xl px-2 py-3 text-center border-b-[4px] active:border-b-[2px] active:translate-y-[2px] border-b-green-300"
+              className="min-h-20 flex-col items-center gap-1 rounded-2xl px-2 py-3 text-center border-b-4 active:border-b-2 active:translate-y-0.5 border-b-green-300"
             >
               <span className="text-base font-bold">Dễ</span>
             </Button>
