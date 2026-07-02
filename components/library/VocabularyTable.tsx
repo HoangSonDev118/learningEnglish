@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { CardStatus, VocabularyCard } from "@/types/vocab";
+import { CardStatus, VocabularyCard, VocabularySet } from "@/types/vocab";
 import { formatRelativeDate } from "@/lib/utils/date";
-import { Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Trash2, ChevronLeft, ChevronRight, Tags } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { VocabularyDetailModal } from "@/components/vocabulary/VocabularyDetailModal";
+import * as Dialog from "@radix-ui/react-dialog";
+import { Button } from "@/components/ui/button";
 
 type VocabularyTableProps = {
   cards: VocabularyCard[];
@@ -14,8 +16,10 @@ type VocabularyTableProps = {
   page: number;
   pageSize: number;
   totalPages: number;
+  sets: VocabularySet[];
   onDelete: (card: VocabularyCard) => void;
   onPageChange: (page: number) => void;
+  onUpdateCardSets: (card: VocabularyCard, setIds: string[]) => Promise<void>;
 };
 
 export function VocabularyTable({
@@ -24,13 +28,43 @@ export function VocabularyTable({
   page,
   pageSize,
   totalPages,
+  sets,
   onDelete,
   onPageChange,
+  onUpdateCardSets,
 }: VocabularyTableProps) {
   const [selectedCard, setSelectedCard] = useState<VocabularyCard | null>(null);
+  const [editingCard, setEditingCard] = useState<VocabularyCard | null>(null);
+  const [editingSetIds, setEditingSetIds] = useState<string[]>([]);
+  const [savingSets, setSavingSets] = useState(false);
 
   const rangeStart = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const rangeEnd = Math.min(page * pageSize, total);
+
+  function openSetEditor(card: VocabularyCard) {
+    setEditingCard(card);
+    setEditingSetIds(card.setIds ?? []);
+  }
+
+  function toggleSet(setId: string) {
+    setEditingSetIds((prev) =>
+      prev.includes(setId) ? prev.filter((id) => id !== setId) : [...prev, setId]
+    );
+  }
+
+  async function saveCardSets() {
+    if (!editingCard) return;
+    if (editingSetIds.length === 0) return;
+
+    setSavingSets(true);
+    try {
+      await onUpdateCardSets(editingCard, editingSetIds);
+      setEditingCard(null);
+      setEditingSetIds([]);
+    } finally {
+      setSavingSets(false);
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -44,6 +78,9 @@ export function VocabularyTable({
               </th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500 hidden sm:table-cell">
                 Nghĩa
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500 hidden lg:table-cell">
+                Bộ từ
               </th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500">
                 Trạng thái
@@ -65,7 +102,7 @@ export function VocabularyTable({
           <tbody className="divide-y divide-zinc-50">
             {cards.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-zinc-400 text-sm">
+                <td colSpan={8} className="px-4 py-10 text-center text-zinc-400 text-sm">
                   Không có thẻ nào khớp bộ lọc
                 </td>
               </tr>
@@ -79,6 +116,33 @@ export function VocabularyTable({
                   <td className="px-4 py-3 font-semibold text-zinc-900">{card.word}</td>
                   <td className="px-4 py-3 text-zinc-600 hidden sm:table-cell">
                     {card.meaning}
+                  </td>
+                  <td className="px-4 py-3 hidden lg:table-cell">
+                    <div className="flex flex-wrap items-center gap-1.5 max-w-72">
+                      {(card.setNames ?? []).slice(0, 2).map((name) => (
+                        <span
+                          key={`${card.id}-${name}`}
+                          className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-600"
+                        >
+                          {name}
+                        </span>
+                      ))}
+                      {(card.setNames?.length ?? 0) > 2 && (
+                        <span className="text-[11px] text-zinc-400">
+                          +{(card.setNames?.length ?? 0) - 2}
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openSetEditor(card);
+                        }}
+                        className="rounded-md border border-zinc-200 px-2 py-0.5 text-[11px] font-medium text-zinc-600 hover:border-violet-300 hover:text-violet-700"
+                      >
+                        Sửa
+                      </button>
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     <StatusBadge status={card.status} />
@@ -169,6 +233,65 @@ export function VocabularyTable({
           if (!open) setSelectedCard(null);
         }}
       />
+
+      <Dialog.Root
+        open={Boolean(editingCard)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditingCard(null);
+            setEditingSetIds([]);
+          }
+        }}
+      >
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 bg-black/25 backdrop-blur-[1px] z-50" />
+          <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[95vw] max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-zinc-100 bg-white p-6 shadow-xl">
+            <Dialog.Title className="text-base font-semibold text-zinc-900 flex items-center gap-2">
+              <Tags className="h-4 w-4" />
+              Chỉnh bộ từ cho &quot;{editingCard?.word}&quot;
+            </Dialog.Title>
+            <Dialog.Description className="mt-1 text-sm text-zinc-500">
+              Mỗi từ phải thuộc ít nhất 1 bộ từ.
+            </Dialog.Description>
+
+            <div className="mt-4 flex flex-wrap gap-2 max-h-52 overflow-auto rounded-xl border border-zinc-100 p-3">
+              {sets.map((setItem) => {
+                const active = editingSetIds.includes(setItem.id);
+                return (
+                  <button
+                    key={setItem.id}
+                    type="button"
+                    onClick={() => toggleSet(setItem.id)}
+                    className={cn(
+                      "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+                      active
+                        ? "border-violet-500 bg-violet-50 text-violet-700"
+                        : "border-zinc-200 bg-white text-zinc-600 hover:border-violet-300"
+                    )}
+                  >
+                    {setItem.name}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setEditingCard(null);
+                  setEditingSetIds([]);
+                }}
+              >
+                Hủy
+              </Button>
+              <Button onClick={() => void saveCardSets()} disabled={savingSets || editingSetIds.length === 0}>
+                {savingSets ? "Đang lưu..." : "Lưu bộ từ"}
+              </Button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
     </div>
   );
 }

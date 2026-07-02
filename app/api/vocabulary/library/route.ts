@@ -10,8 +10,9 @@ export async function GET(req: NextRequest) {
     const pageSize = Math.min(200, Math.max(1, parseInt(searchParams.get("limit") ?? String(PAGE_SIZE), 10)));
     const search = searchParams.get("search") ?? "";
     const filter = (searchParams.get("filter") ?? "all") as LibraryFilter;
+    const setId = searchParams.get("setId")?.trim() || undefined;
 
-    const result = await getLibraryCardsPaged({ page, pageSize, search, filter });
+    const result = await getLibraryCardsPaged({ page, pageSize, search, filter, setId });
     return NextResponse.json(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Không thể tải thư viện";

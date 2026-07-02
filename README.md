@@ -65,7 +65,26 @@ PUSH_CRON_SECRET=your-secret
 npm run db:migrate
 ```
 
-Migration moi: `drizzle/0001_push_subscriptions.sql`
+Migration moi:
+
+- `drizzle/0001_push_subscriptions.sql`
+- `drizzle/0002_vocabulary_sets.sql`
+- `drizzle/0003_set_cover_image.sql`
+
+### 2.1) Cau hinh Cloudinary (anh bia bo tu)
+
+Them vao `.env.local`:
+
+```bash
+CLOUDINARY_CLOUD_NAME=...
+CLOUDINARY_UPLOAD_PRESET=...
+```
+
+Ghi chu:
+
+- Upload anh bia bo tu dung API server `POST /api/vocabulary/sets/:id/cover`.
+- Upload anh bia tam trong luc tao bo tu moi dung `POST /api/vocabulary/sets/upload-cover`.
+- Hien tai app dung upload preset de day anh len Cloudinary.
 
 ### 3) Cron de gui push nen
 

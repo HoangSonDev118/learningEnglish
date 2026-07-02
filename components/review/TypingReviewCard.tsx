@@ -24,6 +24,7 @@ export function TypingReviewCard({ card, onSubmit, focusAfterMs = 0 }: TypingRev
   const [isCorrect, setIsCorrect] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showTapToFocus, setShowTapToFocus] = useState(false);
+  const [isCardAnimationDone, setIsCardAnimationDone] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const isIOS = useRef<boolean>(false);
@@ -39,9 +40,18 @@ export function TypingReviewCard({ card, onSubmit, focusAfterMs = 0 }: TypingRev
     setIsCorrect(false);
     setIsSubmitting(false);
     setShowTapToFocus(false);
+    setIsCardAnimationDone(false);
   }, [card.id]);
 
   useEffect(() => {
+    // Fallback in case animationend doesn't fire (reduced motion / style overrides).
+    const fallbackId = window.setTimeout(() => setIsCardAnimationDone(true), 320);
+    return () => window.clearTimeout(fallbackId);
+  }, [card.id]);
+
+  useEffect(() => {
+    if (!isCardAnimationDone) return;
+
     // Transition effects can temporarily interrupt focus; retry shortly after mount/update.
     let rafId = 0;
     let retryId = 0;
@@ -74,7 +84,7 @@ export function TypingReviewCard({ card, onSubmit, focusAfterMs = 0 }: TypingRev
       window.clearTimeout(finalRetryId);
       window.clearTimeout(iosFallbackId);
     };
-  }, [card.id, focusAfterMs]);
+  }, [card.id, focusAfterMs, isCardAnimationDone]);
 
   function handleTapToFocus() {
     inputRef.current?.focus();
@@ -108,7 +118,14 @@ export function TypingReviewCard({ card, onSubmit, focusAfterMs = 0 }: TypingRev
   }
 
   return (
-    <div className="w-full max-w-2xl mx-auto rounded-3xl border border-zinc-100 bg-white shadow-xl p-6 min-h-80 animate-pop-in">
+    <div
+      className="w-full max-w-2xl mx-auto rounded-3xl border border-zinc-100 bg-white shadow-xl p-6 min-h-80 animate-pop-in"
+      onAnimationEnd={(e) => {
+        if (e.target === e.currentTarget) {
+          setIsCardAnimationDone(true);
+        }
+      }}
+    >
       <p className="text-xs font-semibold uppercase tracking-widest text-zinc-400 mb-3 text-center">
         Chế độ gõ lại
       </p>

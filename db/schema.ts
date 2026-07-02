@@ -6,6 +6,7 @@ import {
   timestamp,
   boolean,
   uuid,
+  primaryKey,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
@@ -64,6 +65,45 @@ export const vocabularyExamples = pgTable("vocabulary_examples", {
     .notNull()
     .defaultNow(),
 });
+
+export const vocabularySets = pgTable(
+  "vocabulary_sets",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    name: text("name").notNull(),
+    coverImageUrl: text("cover_image_url"),
+    coverImagePublicId: text("cover_image_public_id"),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    nameLowerUnique: uniqueIndex("vocabulary_sets_name_lower_idx").on(
+      sql`lower(${table.name})`
+    ),
+  })
+);
+
+export const vocabularyCardSets = pgTable(
+  "vocabulary_card_sets",
+  {
+    cardId: uuid("card_id")
+      .notNull()
+      .references(() => vocabularyCards.id, { onDelete: "cascade" }),
+    setId: uuid("set_id")
+      .notNull()
+      .references(() => vocabularySets.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.cardId, table.setId] }),
+  })
+);
 
 export const reviewLogs = pgTable("review_logs", {
   id: uuid("id").defaultRandom().primaryKey(),

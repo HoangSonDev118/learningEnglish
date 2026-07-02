@@ -10,10 +10,12 @@ import {
   ReviewRating,
   ReviewSessionItem,
   ReviewSessionSummary,
+  VocabularySet,
   VocabularyExample,
 } from "@/types/vocab";
 import { ArrowLeft, BookOpenText, RotateCcw } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { TypingReviewCard } from "@/components/review/TypingReviewCard";
 import { ExampleList } from "@/components/vocabulary/ExampleList";
 import { Button } from "@/components/ui/button";
@@ -39,11 +41,16 @@ export default function ReviewPage() {
   };
 
   const { showToast } = useVocab();
+  const [setOptions, setSetOptions] = useState<VocabularySet[]>([]);
+  const [loadingSets, setLoadingSets] = useState(true);
+  const [selectedSetIds, setSelectedSetIds] = useState<string[]>([]);
+  const [activeSessionSetIds, setActiveSessionSetIds] = useState<string[] | null>(null);
   const [sessionItems, setSessionItems] = useState<ReviewSessionItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
   const [sessionStarted, setSessionStarted] = useState(false);
-  const [sessionLoading, setSessionLoading] = useState(true);
+  const [sessionLoading, setSessionLoading] = useState(false);
+  const [sessionAttempted, setSessionAttempted] = useState(false);
   const [sessionSource, setSessionSource] = useState<SessionSource>("due");
   const [transitionPhase, setTransitionPhase] = useState<TransitionPhase>("idle");
   const [summary, setSummary] = useState<ReviewSessionSummary | null>(null);
@@ -59,6 +66,46 @@ export default function ReviewPage() {
 
   const currentItem = sessionItems[currentIndex];
   const currentCard = currentItem?.card;
+
+  const normalizeSetIds = useCallback((setIds?: string[]) => {
+    if (!setIds || setIds.length === 0) return [];
+    const validSetIds = new Set(setOptions.map((item) => item.id));
+    const uniqueIds = new Set<string>();
+    setIds.forEach((id) => {
+      const trimmed = id.trim();
+      if (trimmed && validSetIds.has(trimmed)) {
+        uniqueIds.add(trimmed);
+      }
+    });
+    return Array.from(uniqueIds);
+  }, [setOptions]);
+
+  const buildDueCacheKey = useCallback((setIds?: string[]) => {
+    if (!setIds || setIds.length === 0) return REVIEW_DUE_CACHE_KEY;
+    const setFilterKey = [...setIds].sort().join(",");
+    return `${REVIEW_DUE_CACHE_KEY}:${setFilterKey}`;
+  }, []);
+
+  const mergeSessionItems = useCallback((itemGroups: ReviewSessionItem[][], shouldShuffle: boolean) => {
+    const mergedMap = new Map<string, ReviewSessionItem>();
+    itemGroups.flat().forEach((item) => {
+      if (!mergedMap.has(item.card.id)) {
+        mergedMap.set(item.card.id, item);
+      }
+    });
+
+    const mergedItems = Array.from(mergedMap.values());
+    if (!shouldShuffle || mergedItems.length <= 1) {
+      return mergedItems;
+    }
+
+    const shuffled = [...mergedItems];
+    for (let i = shuffled.length - 1; i > 0; i -= 1) {
+      const swapIndex = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[i]];
+    }
+    return shuffled;
+  }, []);
 
   const clearTransitionTimer = useCallback(() => {
     if (transitionTimerRef.current !== null) {
@@ -116,12 +163,40 @@ export default function ReviewPage() {
     return () => clearTransitionTimer();
   }, [clearTransitionTimer]);
 
-  async function loadSession(source: SessionSource = "due") {
+  async function loadSets() {
+    try {
+      setLoadingSets(true);
+      const res = await fetch("/api/vocabulary/sets", { cache: "no-store" });
+      const data = (await res.json().catch(() => ({}))) as {
+        sets?: VocabularySet[];
+        error?: string;
+      };
+
+      if (!res.ok) {
+        throw new Error(data.error ?? "Không thể tải danh sách bộ từ");
+      }
+
+      setSetOptions(data.sets ?? []);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Không thể tải danh sách bộ từ";
+      showToast(message, "error");
+    } finally {
+      setLoadingSets(false);
+    }
+  }
+
+  async function loadSession(source: SessionSource = "due", requestedSetIds?: string[]) {
+    setSessionAttempted(true);
     const isDueSession = source === "due";
+    const normalizedSetIds = normalizeSetIds(requestedSetIds);
+    const dueCacheKey = buildDueCacheKey(normalizedSetIds);
     const cached = isDueSession
-      ? getClientCache<ReviewSessionItem[]>(REVIEW_DUE_CACHE_KEY, REVIEW_CACHE_TTL)
+      ? getClientCache<ReviewSessionItem[]>(dueCacheKey, REVIEW_CACHE_TTL)
       : null;
     const hasWarmCache = Boolean(cached && cached.length > 0);
+    const hasMultiSetFilter = normalizedSetIds.length > 1;
+
+    setActiveSessionSetIds(normalizedSetIds.length > 0 ? normalizedSetIds : null);
 
     if (hasWarmCache) {
       const warmCacheItems = cached as ReviewSessionItem[];
@@ -140,26 +215,39 @@ export default function ReviewPage() {
 
     try {
       if (!hasWarmCache) setSessionLoading(true);
-      const endpoint = isDueSession
-        ? "/api/vocabulary/due"
-        : `/api/vocabulary/due?mode=library-random&limit=${RANDOM_REVIEW_LIMIT}`;
-      const res = await fetch(endpoint, { cache: "no-store" });
-      const data = (await res.json()) as {
-        items?: ReviewSessionItem[];
-        error?: string;
+      const modeQuery = isDueSession
+        ? "mode=due"
+        : `mode=library-random&limit=${RANDOM_REVIEW_LIMIT}`;
+
+      const loadItems = async (setId?: string) => {
+        const setQuery = setId ? `&setId=${encodeURIComponent(setId)}` : "";
+        const endpoint = `/api/vocabulary/due?${modeQuery}${setQuery}`;
+        const res = await fetch(endpoint, { cache: "no-store" });
+        const data = (await res.json()) as {
+          items?: ReviewSessionItem[];
+          error?: string;
+        };
+
+        if (!res.ok) {
+          throw new Error(data.error ?? "Không thể tải thẻ đến hạn");
+        }
+
+        return data.items ?? [];
       };
 
-      if (!res.ok) {
-        if (!hasWarmCache) {
-          showToast(data.error ?? "Không thể tải thẻ đến hạn", "error");
-        }
-        return;
+      const itemGroups =
+        normalizedSetIds.length > 0
+          ? await Promise.all(normalizedSetIds.map((setId) => loadItems(setId)))
+          : [await loadItems()];
+
+      let items = mergeSessionItems(itemGroups, hasMultiSetFilter);
+      if (!isDueSession && normalizedSetIds.length > 1 && items.length > RANDOM_REVIEW_LIMIT) {
+        items = items.slice(0, RANDOM_REVIEW_LIMIT);
       }
 
-      const items = data.items ?? [];
       // Keep current UI stable when loading from cache to avoid random card swaps.
       if (isDueSession) {
-        setClientCache(REVIEW_DUE_CACHE_KEY, items);
+        setClientCache(dueCacheKey, items);
       }
       if (hasWarmCache) {
         return;
@@ -186,8 +274,20 @@ export default function ReviewPage() {
     }
   }
 
+  const toggleMultiSetSelection = useCallback((setId: string) => {
+    setSelectedSetIds((prev) => {
+      if (prev.includes(setId)) {
+        return prev.filter((item) => item !== setId);
+      }
+      return [...prev, setId];
+    });
+  }, []);
+
   useEffect(() => {
-    loadSession();
+    const timer = window.setTimeout(() => {
+      void loadSets();
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadExamples(cardId: string) {
@@ -295,7 +395,8 @@ export default function ReviewPage() {
           easyCount: nextCounts.easy,
         });
         setTransitionPhase("idle");
-        clearClientCache(REVIEW_DUE_CACHE_KEY);
+        const dueCacheKey = buildDueCacheKey(activeSessionSetIds ?? undefined);
+        clearClientCache(dueCacheKey);
         return;
       }
 
@@ -304,7 +405,8 @@ export default function ReviewPage() {
       setShowExamples(false);
       setExamples([]);
       if (sessionSource === "due") {
-        setClientCache(REVIEW_DUE_CACHE_KEY, sessionItems.slice(nextIndex));
+        const dueCacheKey = buildDueCacheKey(activeSessionSetIds ?? undefined);
+        setClientCache(dueCacheKey, sessionItems.slice(nextIndex));
       }
 
       setTransitionPhase("in");
@@ -350,7 +452,7 @@ export default function ReviewPage() {
   }
 
   function handleRestart() {
-    loadSession("library-random");
+    loadSession("library-random", activeSessionSetIds ?? undefined);
   }
 
   if (sessionLoading) {
@@ -362,6 +464,149 @@ export default function ReviewPage() {
   }
 
   if (!sessionStarted || sessionItems.length === 0) {
+    if (!sessionAttempted) {
+      return (
+        <div className="mx-auto max-w-3xl px-4 py-8 page-enter space-y-6">
+          <Link href="/" className="flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-800 transition-colors w-fit">
+            <ArrowLeft className="h-4 w-4" />
+            Quay lại tổng quan
+          </Link>
+
+          <div className="rounded-3xl border border-zinc-200 bg-white p-6 sm:p-8 animate-pop-in">
+            <h2 className="text-xl font-semibold text-zinc-800">Chọn bộ từ để ôn tập</h2>
+            <p className="mt-2 text-sm text-zinc-500">
+              Bấm vào bộ từ để ôn ngay, hoặc tick nhiều bộ rồi bấm nút ôn tập để trộn.
+            </p>
+
+            {loadingSets ? (
+              <p className="mt-4 text-sm text-zinc-400">Đang tải bộ từ...</p>
+            ) : (
+              <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    playClickButtonSound();
+                    void loadSession("due");
+                  }}
+                  className={`group overflow-hidden rounded-2xl border-2 text-left animate-pop-in transition-[border-color,box-shadow,transform] duration-300 ease-out ${
+                    selectedSetIds.length === 0
+                      ? "border-violet-500 shadow-[0_0_0_3px_rgba(139,92,246,0.14)]"
+                      : "border-zinc-200 hover:border-violet-300"
+                  }`}
+                >
+                  <div className="h-28 bg-linear-to-br from-violet-500 via-indigo-500 to-cyan-500" />
+                  <div className="p-3">
+                    <p className="text-sm font-semibold text-zinc-800">Tất cả bộ từ</p>
+                    <p className="mt-1 text-xs text-zinc-500">Ôn toàn bộ từ trong hệ thống</p>
+                  </div>
+                </button>
+
+                {setOptions.map((setItem, index) => {
+                  const isSelected = selectedSetIds.includes(setItem.id);
+                  return (
+                    <div
+                      key={setItem.id}
+                      className="relative animate-pop-in"
+                      style={{
+                        animationDelay: `${60 + index * 70}ms`,
+                        animationFillMode: "both",
+                      }}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          playClickButtonSound();
+                          void loadSession("due", [setItem.id]);
+                        }}
+                        className={`group w-full overflow-hidden rounded-2xl border-2 text-left transition-[border-color,box-shadow,transform] duration-300 ease-out ${
+                          isSelected
+                            ? "border-violet-500 shadow-[0_0_0_3px_rgba(139,92,246,0.14)]"
+                            : "border-zinc-200 hover:border-violet-300"
+                        }`}
+                      >
+                        <div className="relative h-28 bg-zinc-100">
+                          {setItem.coverImageUrl ? (
+                            <Image
+                              src={setItem.coverImageUrl}
+                              alt={setItem.name}
+                              fill
+                              sizes="(max-width: 640px) 100vw, 50vw"
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <div className="h-full w-full bg-linear-to-br from-zinc-200 to-zinc-300" />
+                          )}
+                        </div>
+                        <div className="p-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-sm font-semibold text-zinc-800">{setItem.name}</p>
+                            {typeof setItem.dueCount === "number" && setItem.dueCount > 0 ? (
+                              <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+                                {setItem.dueCount} cần ôn
+                              </span>
+                            ) : null}
+                          </div>
+                          <p className="mt-1 text-xs text-zinc-500">
+                            {typeof setItem.cardCount === "number"
+                              ? `${setItem.cardCount} từ trong bộ này`
+                              : "Bộ từ"}
+                          </p>
+                        </div>
+                      </button>
+
+                      <label
+                        className="absolute right-3 top-3 z-10 flex h-6 w-6 cursor-pointer items-center justify-center"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleMultiSetSelection(setItem.id)}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                          }}
+                          className="h-4 w-4 cursor-pointer accent-violet-600 transition-transform duration-200 ease-out checked:scale-110"
+                          aria-label={`Chọn ${setItem.name}`}
+                        />
+                      </label>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Button
+                onClick={() => {
+                  playClickButtonSound();
+                  void loadSession("due", selectedSetIds);
+                }}
+                className="gap-2"
+                disabled={sessionLoading || loadingSets}
+              >
+                {selectedSetIds.length > 0
+                  ? `Ôn tập ${selectedSetIds.length} bộ đã chọn`
+                  : "Bắt đầu ôn tập đến hạn"}
+              </Button>
+
+              <Button
+                variant="outline"
+                onClick={() => {
+                  playClickButtonSound();
+                  void loadSession("library-random", selectedSetIds);
+                }}
+                disabled={sessionLoading || loadingSets}
+              >
+                Ôn ngẫu nhiên 30 từ
+              </Button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="mx-auto max-w-2xl px-4 py-8 page-enter">
         <Link href="/" className="flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-800 mb-8 transition-colors">
@@ -380,7 +625,7 @@ export default function ReviewPage() {
             <Button
               onClick={() => {
                 playClickButtonSound();
-                loadSession("library-random");
+                loadSession("library-random", activeSessionSetIds ?? undefined);
               }}
               className="gap-2"
             >

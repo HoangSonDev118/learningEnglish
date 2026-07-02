@@ -17,7 +17,7 @@ export default function ImportPage() {
         </Link>
         <h1 className="text-2xl font-bold text-zinc-900">Nhập từ vựng</h1>
         <p className="mt-1 text-sm text-zinc-500">
-          Tải lên file .txt hoặc .xlsx để thêm từ vựng vào bộ học của bạn
+          Tải lên file .txt/.xlsx hoặc nhập chay mỗi từ một dòng để thêm từ vựng. Khi nhập bắt buộc chọn bộ từ có sẵn hoặc tạo bộ từ mới.
         </p>
       </div>
 
@@ -45,10 +45,12 @@ illness: sự ốm yếu`}
           Với file .xlsx: cột A là tiếng Anh, cột B là tiếng Việt (sheet đầu tiên).
         </p>
         <ul className="text-xs text-zinc-400 space-y-1 list-disc list-inside">
+          <li>Có thể nhập chay: mỗi dòng một từ tiếng Anh</li>
           <li>Mỗi dòng một từ</li>
           <li>Tách tiếng Anh và tiếng Việt bằng dấu hai chấm <code className="bg-zinc-100 px-1 rounded">:</code></li>
           <li>Dòng trống sẽ được bỏ qua</li>
-          <li>Từ bị trùng sẽ tự động bỏ qua</li>
+          <li>Nếu thêm vào bộ có sẵn: từ trùng trong bộ sẽ tự động bỏ qua</li>
+          <li>Nếu tạo bộ mới: chỉ cảnh báo số từ trùng, không tự lọc trước</li>
         </ul>
       </div>
     </div>

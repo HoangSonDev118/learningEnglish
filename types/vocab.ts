@@ -6,6 +6,8 @@ export type VocabularyCard = {
   id: string;
   word: string;
   meaning: string;
+  setIds?: string[];
+  setNames?: string[];
   status: CardStatus;
   reviewMode: ReviewMode;
   repetition: number;
@@ -20,6 +22,15 @@ export type VocabularyCard = {
   wrongCount?: number;
   createdAt: string;
   updatedAt: string;
+};
+
+export type VocabularySet = {
+  id: string;
+  name: string;
+  coverImageUrl?: string | null;
+  coverImagePublicId?: string | null;
+  cardCount?: number;
+  dueCount?: number;
 };
 
 export type VocabularyExample = {
