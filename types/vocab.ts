@@ -5,6 +5,7 @@ export type ReviewType = "flashcard" | "typing";
 export type VocabularyCard = {
   id: string;
   word: string;
+  partOfSpeech?: string | null;
   meaning: string;
   setIds?: string[];
   setNames?: string[];
@@ -72,7 +73,7 @@ export type ReviewSessionItem = {
 };
 
 export type ParseResult = {
-  validItems: { word: string; meaning: string }[];
+  validItems: { word: string; meaning: string; partOfSpeech?: string | null }[];
   invalidLines: { lineNumber: number; content: string; reason: string }[];
 };
 

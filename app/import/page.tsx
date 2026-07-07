@@ -35,14 +35,14 @@ export default function ImportPage() {
           Với file .txt, mỗi dòng cần theo định dạng:
         </p>
         <pre className="rounded-xl bg-zinc-50 p-4 text-xs font-mono text-zinc-700 leading-relaxed overflow-x-auto">
-{`nutrition: dinh dưỡng
-medicine: thuốc
-symptom: triệu chứng
-hygiene: vệ sinh
-illness: sự ốm yếu`}
+{`nutrition (n): dinh dưỡng
+medicine (n): thuốc
+symptom (n): triệu chứng
+hygiene (n): vệ sinh
+illness (n): sự ốm yếu`}
         </pre>
         <p className="text-sm text-zinc-500">
-          Với file .xlsx: cột A là tiếng Anh, cột B là tiếng Việt (sheet đầu tiên).
+          Với file .xlsx: cột A là tiếng Anh (có thể kèm từ loại như <span className="font-mono">sunshine (n)</span>), cột B là tiếng Việt (sheet đầu tiên).
         </p>
         <ul className="text-xs text-zinc-400 space-y-1 list-disc list-inside">
           <li>Có thể nhập chay: mỗi dòng một từ tiếng Anh</li>

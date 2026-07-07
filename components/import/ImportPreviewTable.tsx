@@ -25,6 +25,9 @@ export function ImportPreviewTable({ parseResult, existingCards }: Props) {
               English
             </th>
             <th className="text-left px-4 py-3 font-semibold text-zinc-600 text-xs uppercase tracking-wide">
+              POS
+            </th>
+            <th className="text-left px-4 py-3 font-semibold text-zinc-600 text-xs uppercase tracking-wide">
               Meaning
             </th>
             <th className="text-left px-4 py-3 font-semibold text-zinc-600 text-xs uppercase tracking-wide">
@@ -38,6 +41,7 @@ export function ImportPreviewTable({ parseResult, existingCards }: Props) {
             return (
               <tr key={i} className={isDup ? "opacity-50 bg-zinc-50" : "hover:bg-violet-50/40"}>
                 <td className="px-4 py-3 font-medium text-zinc-800">{item.word}</td>
+                <td className="px-4 py-3 text-zinc-600">{item.partOfSpeech ? `(${item.partOfSpeech})` : "-"}</td>
                 <td className="px-4 py-3 text-zinc-600">{item.meaning}</td>
                 <td className="px-4 py-3">
                   {isDup ? (

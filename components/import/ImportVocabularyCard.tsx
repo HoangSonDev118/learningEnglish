@@ -5,7 +5,7 @@ import { useVocab } from "@/context/VocabContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { parseVocabText } from "@/lib/parser/vocab-parser";
+import { extractWordAndPartOfSpeech, parseVocabText } from "@/lib/parser/vocab-parser";
 import { ParseResult } from "@/types/vocab";
 import {
   Upload,
@@ -182,7 +182,10 @@ export function ImportVocabularyCard() {
     void checkExistingWords(parseResult?.validItems ?? [], selectedSetIds);
   }, [parseResult, selectedSetIds, newSetNamesInput]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function checkExistingWords(items: { word: string; meaning: string }[], setIds: string[]) {
+  async function checkExistingWords(
+    items: { word: string; meaning: string; partOfSpeech?: string | null }[],
+    setIds: string[]
+  ) {
     if (items.length === 0) {
       setExistingInSelectedSets(new Set());
       setExistingInLibrary(new Set());
@@ -270,7 +273,7 @@ export function ImportVocabularyCard() {
 
   function parseManualWordList(rawText: string): ParseResult {
     const lines = rawText.split("\n");
-    const validItems: { word: string; meaning: string }[] = [];
+    const validItems: { word: string; meaning: string; partOfSpeech?: string | null }[] = [];
     const invalidLines: { lineNumber: number; content: string; reason: string }[] = [];
     const seen = new Set<string>();
 
@@ -280,7 +283,8 @@ export function ImportVocabularyCard() {
       if (!trimmed) continue;
 
       const colonIndex = trimmed.indexOf(":");
-      const word = colonIndex >= 0 ? trimmed.slice(0, colonIndex).trim() : trimmed;
+      const rawWord = colonIndex >= 0 ? trimmed.slice(0, colonIndex).trim() : trimmed;
+      const { word, partOfSpeech } = extractWordAndPartOfSpeech(rawWord);
       const meaning = colonIndex >= 0
         ? trimmed.slice(colonIndex + 1).trim() || "(chua nhap nghia)"
         : "(chua nhap nghia)";
@@ -297,7 +301,7 @@ export function ImportVocabularyCard() {
       const key = word.toLowerCase();
       if (seen.has(key)) continue;
       seen.add(key);
-      validItems.push({ word, meaning });
+      validItems.push({ word, meaning, partOfSpeech });
     }
 
     return { validItems, invalidLines };
@@ -341,7 +345,7 @@ export function ImportVocabularyCard() {
       blankrows: false,
     });
 
-    const validItems: { word: string; meaning: string }[] = [];
+    const validItems: { word: string; meaning: string; partOfSpeech?: string | null }[] = [];
     const invalidLines: { lineNumber: number; content: string; reason: string }[] = [];
 
     rows.forEach((row, index) => {
@@ -378,7 +382,17 @@ export function ImportVocabularyCard() {
         return;
       }
 
-      validItems.push({ word: rawWord, meaning: rawMeaning });
+      const { word, partOfSpeech } = extractWordAndPartOfSpeech(rawWord);
+      if (!word) {
+        invalidLines.push({
+          lineNumber: index + 1,
+          content: `A: ${rawWord} | B: ${rawMeaning}`,
+          reason: "Cột A (tiếng Anh) đang rỗng",
+        });
+        return;
+      }
+
+      validItems.push({ word, meaning: rawMeaning, partOfSpeech });
     });
 
     setParseResult({ validItems, invalidLines });
@@ -519,7 +533,7 @@ export function ImportVocabularyCard() {
           Nhập file từ vựng
         </CardTitle>
         <CardDescription>
-          Hỗ trợ file .txt (mỗi dòng: <code className="text-xs bg-zinc-100 px-1 py-0.5 rounded">english: vietnamese</code>)
+          Hỗ trợ file .txt (mỗi dòng: <code className="text-xs bg-zinc-100 px-1 py-0.5 rounded">english (n): vietnamese</code>)
           {" "}hoặc .xlsx (cột A: tiếng Anh, cột B: tiếng Việt). Bạn cũng có thể nhập tay mỗi từ một dòng.
         </CardDescription>
       </CardHeader>
@@ -583,13 +597,13 @@ export function ImportVocabularyCard() {
               <div>
                 <p className="text-sm font-semibold text-zinc-700">Nhập theo từng dòng</p>
                 <p className="mt-1 text-xs text-zinc-500">
-                  Mỗi dòng là 1 từ tiếng Anh. Có thể nhập thêm nghĩa theo dạng <span className="font-mono">word: meaning</span>.
+                  Mỗi dòng là 1 từ tiếng Anh. Có thể nhập thêm từ loại và nghĩa theo dạng <span className="font-mono">word (n): meaning</span>.
                 </p>
               </div>
               <textarea
                 value={manualInput}
                 onChange={(e) => setManualInput(e.target.value)}
-                placeholder={"apple\nmedicine\nnutrition\n\nhoặc:\nhealth: suc khoe"}
+                placeholder={"apple\nmedicine\nnutrition\n\nhoặc:\nsunshine (n): anh nang"}
                 className="min-h-48 w-full rounded-xl border border-zinc-200 px-3 py-2 text-sm text-zinc-700 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
               />
               <Button

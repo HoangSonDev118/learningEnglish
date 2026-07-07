@@ -16,6 +16,7 @@ export const vocabularyCards = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     word: text("word").notNull(),
+    partOfSpeech: text("part_of_speech"),
     meaning: text("meaning").notNull(),
 
     status: text("status").notNull().default("new"),

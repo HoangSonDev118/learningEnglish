@@ -5,11 +5,16 @@ const DEFAULT_EASE_FACTOR = 2.5;
 const MIN_EASE_FACTOR = 1.3;
 const MASTERED_THRESHOLD = 8;
 
-export function createNewCard(word: string, meaning: string): VocabularyCard {
+export function createNewCard(
+  word: string,
+  meaning: string,
+  partOfSpeech?: string | null
+): VocabularyCard {
   const now = new Date().toISOString();
   return {
     id: crypto.randomUUID(),
     word,
+    partOfSpeech: partOfSpeech ?? null,
     meaning,
     status: "new",
     reviewMode: "flashcard",

@@ -40,6 +40,9 @@ export function ReviewCard({
           <h1 className="text-3xl sm:text-4xl font-bold text-zinc-900 tracking-tight leading-tight">
             {card.word}
           </h1>
+          {card.partOfSpeech ? (
+            <p className="mt-2 text-sm font-semibold text-zinc-500">({card.partOfSpeech})</p>
+          ) : null}
           <button
             type="button"
             onClick={() => speakEnglish(card.word)}

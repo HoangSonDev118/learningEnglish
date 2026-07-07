@@ -5,7 +5,7 @@ import { sendDueReminderPushIfNeeded } from "@/lib/notifications/web-push";
 export async function POST(req: NextRequest) {
   try {
     const body = (await req.json()) as {
-      items?: { word: string; meaning: string }[];
+      items?: { word: string; meaning: string; partOfSpeech?: string | null }[];
       setIds?: string[];
       newSetNames?: string[];
       newSetCovers?: {
@@ -39,8 +39,16 @@ export async function POST(req: NextRequest) {
     }
 
     const sanitized = items
-      .map((item) => ({ word: item.word?.trim(), meaning: item.meaning?.trim() }))
-      .filter((item) => item.word && item.meaning) as { word: string; meaning: string }[];
+      .map((item) => ({
+        word: item.word?.trim(),
+        meaning: item.meaning?.trim(),
+        partOfSpeech: item.partOfSpeech?.trim().toLowerCase() || null,
+      }))
+      .filter((item) => item.word && item.meaning) as {
+      word: string;
+      meaning: string;
+      partOfSpeech?: string | null;
+    }[];
 
     const result = await importVocabularyItems(sanitized, { setIds, newSetNames, newSetCovers });
 

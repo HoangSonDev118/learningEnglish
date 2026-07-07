@@ -9,8 +9,18 @@ export function normalizeAnswer(input: string): string {
     .replace(/[.,!?;:"'()\[\]{}]/g, "");
 }
 
+function stripTrailingPartOfSpeech(word: string): string {
+  return word.replace(/\s*\([^()]+\)\s*$/, "").trim();
+}
+
 export function isTypingAnswerCorrect(input: string, expected: string): boolean {
-  return normalizeAnswer(input) === normalizeAnswer(expected);
+  const normalizedInput = normalizeAnswer(input);
+  const normalizedExpected = normalizeAnswer(expected);
+  const normalizedExpectedWithoutPos = normalizeAnswer(stripTrailingPartOfSpeech(expected));
+  return (
+    normalizedInput === normalizedExpected ||
+    normalizedInput === normalizedExpectedWithoutPos
+  );
 }
 
 export function applyTypingReview(

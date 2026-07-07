@@ -1,8 +1,36 @@
 import { ParseResult } from "@/types/vocab";
 
+function normalizePartOfSpeech(raw: string): string | null {
+  const cleaned = raw.trim().toLowerCase().replace(/\.+$/, "");
+  return cleaned || null;
+}
+
+export function extractWordAndPartOfSpeech(rawWord: string): {
+  word: string;
+  partOfSpeech: string | null;
+} {
+  const trimmed = rawWord.trim();
+  if (!trimmed) {
+    return { word: "", partOfSpeech: null };
+  }
+
+  const match = trimmed.match(/\(([^()]+)\)\s*$/);
+  if (!match || match.index === undefined) {
+    return { word: trimmed, partOfSpeech: null };
+  }
+
+  const word = trimmed.slice(0, match.index).trim();
+  const partOfSpeech = normalizePartOfSpeech(match[1]);
+  if (!word) {
+    return { word: trimmed, partOfSpeech: null };
+  }
+
+  return { word, partOfSpeech };
+}
+
 export function parseVocabText(rawText: string): ParseResult {
   const lines = rawText.split("\n");
-  const validItems: { word: string; meaning: string }[] = [];
+  const validItems: { word: string; meaning: string; partOfSpeech?: string | null }[] = [];
   const invalidLines: { lineNumber: number; content: string; reason: string }[] = [];
 
   for (let i = 0; i < lines.length; i++) {
@@ -20,8 +48,9 @@ export function parseVocabText(rawText: string): ParseResult {
       continue;
     }
 
-    const word = trimmed.slice(0, colonIndex).trim();
+    const rawWord = trimmed.slice(0, colonIndex).trim();
     const meaning = trimmed.slice(colonIndex + 1).trim();
+    const { word, partOfSpeech } = extractWordAndPartOfSpeech(rawWord);
 
     if (!word) {
       invalidLines.push({
@@ -41,21 +70,21 @@ export function parseVocabText(rawText: string): ParseResult {
       continue;
     }
 
-    validItems.push({ word, meaning });
+    validItems.push({ word, meaning, partOfSpeech });
   }
 
   return { validItems, invalidLines };
 }
 
 export function deduplicateItems(
-  incoming: { word: string; meaning: string }[],
+  incoming: { word: string; meaning: string; partOfSpeech?: string | null }[],
   existing: { word: string }[]
 ): {
-  newItems: { word: string; meaning: string }[];
+  newItems: { word: string; meaning: string; partOfSpeech?: string | null }[];
   duplicates: string[];
 } {
   const existingWords = new Set(existing.map((c) => c.word.toLowerCase()));
-  const newItems: { word: string; meaning: string }[] = [];
+  const newItems: { word: string; meaning: string; partOfSpeech?: string | null }[] = [];
   const duplicates: string[] = [];
 
   for (const item of incoming) {

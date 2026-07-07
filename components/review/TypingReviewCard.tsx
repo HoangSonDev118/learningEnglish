@@ -144,6 +144,9 @@ export function TypingReviewCard({
       <h2 className="text-2xl sm:text-3xl font-bold text-center text-zinc-900 mb-6 leading-tight">
         {card.meaning}
       </h2>
+      {card.partOfSpeech ? (
+        <p className="-mt-4 mb-5 text-center text-sm font-semibold text-zinc-500">Từ loại: ({card.partOfSpeech})</p>
+      ) : null}
 
       {showIllustration ? (
         <div className="mb-6 w-full overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-50">
@@ -252,6 +255,7 @@ export function TypingReviewCard({
             <p className="text-red-700 font-semibold">Chưa đúng</p>
             <p className="text-sm text-zinc-600 mt-1">
               Đáp án đúng: <span className="font-bold text-zinc-900">{card.word}</span>
+              {card.partOfSpeech ? <span className="ml-1 text-zinc-500">({card.partOfSpeech})</span> : null}
             </p>
           </div>
           <Button className="w-full" size="lg" onClick={() => { playClickButtonSound(); handleContinueWrong(); }} disabled={isSubmitting}>

@@ -21,7 +21,7 @@ import { todayString } from "@/lib/utils/date";
 type CardRow = typeof vocabularyCards.$inferSelect;
 type SetRow = typeof vocabularySets.$inferSelect;
 
-type ImportInput = { word: string; meaning: string };
+type ImportInput = { word: string; meaning: string; partOfSpeech?: string | null };
 
 type ImportOptions = {
   setIds?: string[];
@@ -52,6 +52,7 @@ function mapCard(row: CardRow): VocabularyCard {
   return {
     id: row.id,
     word: row.word,
+    partOfSpeech: row.partOfSpeech ?? null,
     meaning: row.meaning,
     status: row.status as VocabularyCard["status"],
     reviewMode: row.reviewMode as VocabularyCard["reviewMode"],
@@ -585,11 +586,12 @@ export async function importVocabularyItems(items: ImportInput[], options?: Impo
     throw new Error("Bạn cần chọn ít nhất 1 bộ từ hoặc nhập tên bộ từ mới");
   }
 
-  const values = items.map(({ word, meaning }) => {
-    const card = createNewCard(word, meaning);
+  const values = items.map(({ word, meaning, partOfSpeech }) => {
+    const card = createNewCard(word, meaning, partOfSpeech);
     return {
       id: card.id,
       word: card.word,
+      partOfSpeech: card.partOfSpeech ?? null,
       meaning: card.meaning,
       status: card.status,
       reviewMode: card.reviewMode,
@@ -922,7 +924,11 @@ export async function importLegacyData(input: {
   stats?: StudyStats | null;
 }) {
   const imported = await importVocabularyItems(
-    input.cards.map((c) => ({ word: c.word, meaning: c.meaning })),
+    input.cards.map((c) => ({
+      word: c.word,
+      meaning: c.meaning,
+      partOfSpeech: c.partOfSpeech ?? null,
+    })),
     { newSetNames: ["Bộ từ 1"] }
   );
 
