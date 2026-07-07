@@ -11,13 +11,11 @@ import {
   ReviewSessionItem,
   ReviewSessionSummary,
   VocabularySet,
-  VocabularyExample,
 } from "@/types/vocab";
-import { ArrowLeft, BookOpenText, RotateCcw } from "lucide-react";
+import { ArrowLeft, RotateCcw } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { TypingReviewCard } from "@/components/review/TypingReviewCard";
-import { ExampleList } from "@/components/vocabulary/ExampleList";
 import { Button } from "@/components/ui/button";
 import { speakEnglish } from "@/lib/utils/speech";
 import { clearClientCache, getClientCache, setClientCache } from "@/lib/utils/client-cache";
@@ -28,9 +26,14 @@ const REVIEW_CACHE_TTL = 30_000;
 const RANDOM_REVIEW_LIMIT = 30;
 const CARD_SWIPE_OUT_MS = 480;
 const CARD_SWIPE_IN_MS = 460;
+const REVIEW_ILLUSTRATION_AFTER_ANSWER_KEY = "review-illustration-after-answer";
 
 type SessionSource = "due" | "library-random";
 type TransitionPhase = "idle" | "out" | "in";
+
+function normalizeIllustrationKey(word: string): string {
+  return word.trim().toLowerCase();
+}
 
 export default function ReviewPage() {
   type PendingReviewRequest = {
@@ -55,10 +58,10 @@ export default function ReviewPage() {
   const [transitionPhase, setTransitionPhase] = useState<TransitionPhase>("idle");
   const [summary, setSummary] = useState<ReviewSessionSummary | null>(null);
   const [counts, setCounts] = useState({ again: 0, hard: 0, good: 0, easy: 0 });
-  const [examples, setExamples] = useState<VocabularyExample[]>([]);
-  const [showExamples, setShowExamples] = useState(false);
-  const [loadingExamples, setLoadingExamples] = useState(false);
-  const [generatingExamples, setGeneratingExamples] = useState(false);
+  const [showIllustration, setShowIllustration] = useState(false);
+  const [showIllustrationAfterAnswer, setShowIllustrationAfterAnswer] = useState(false);
+  const [illustrationCache, setIllustrationCache] = useState<Record<string, string | null>>({});
+  const [loadingIllustrationKey, setLoadingIllustrationKey] = useState<string | null>(null);
   const [pendingSyncCount, setPendingSyncCount] = useState(0);
   const syncQueueRef = useRef<PendingReviewRequest[]>([]);
   const isFlushingRef = useRef(false);
@@ -66,6 +69,20 @@ export default function ReviewPage() {
 
   const currentItem = sessionItems[currentIndex];
   const currentCard = currentItem?.card;
+  const currentIllustrationKey = currentCard
+    ? normalizeIllustrationKey(currentCard.word)
+    : null;
+  const currentIllustrationUrl = currentIllustrationKey
+    ? illustrationCache[currentIllustrationKey]
+    : undefined;
+  const currentIllustrationLoading = Boolean(
+    showIllustration
+      && currentIllustrationKey
+      && (loadingIllustrationKey === currentIllustrationKey || !(currentIllustrationKey in illustrationCache))
+  );
+  const shouldRevealIllustrationOnFlashcard = !showIllustrationAfterAnswer || showAnswer;
+  const shouldShowIllustrationForCurrentCard = showIllustration
+    && (currentItem?.mode === "typing" || shouldRevealIllustrationOnFlashcard);
 
   const normalizeSetIds = useCallback((setIds?: string[]) => {
     if (!setIds || setIds.length === 0) return [];
@@ -187,6 +204,9 @@ export default function ReviewPage() {
 
   async function loadSession(source: SessionSource = "due", requestedSetIds?: string[]) {
     setSessionAttempted(true);
+    setShowIllustration(false);
+    setIllustrationCache({});
+    setLoadingIllustrationKey(null);
     const isDueSession = source === "due";
     const normalizedSetIds = normalizeSetIds(requestedSetIds);
     const dueCacheKey = buildDueCacheKey(normalizedSetIds);
@@ -208,8 +228,6 @@ export default function ReviewPage() {
       setSummary(null);
       setTransitionPhase("idle");
       setCounts({ again: 0, hard: 0, good: 0, easy: 0 });
-      setExamples([]);
-      setShowExamples(false);
       setSessionLoading(false);
     }
 
@@ -261,8 +279,6 @@ export default function ReviewPage() {
       setSummary(null);
       setTransitionPhase("idle");
       setCounts({ again: 0, hard: 0, good: 0, easy: 0 });
-      setExamples([]);
-      setShowExamples(false);
 
       if (!isDueSession && items.length === 0) {
         showToast("Thư viện chưa có từ để ôn tập", "error");
@@ -290,46 +306,21 @@ export default function ReviewPage() {
     return () => window.clearTimeout(timer);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function loadExamples(cardId: string) {
-    try {
-      setLoadingExamples(true);
-      const res = await fetch(`/api/vocabulary/${cardId}/examples`, {
-        cache: "no-store",
-      });
-      const data = (await res.json()) as { examples?: VocabularyExample[]; error?: string };
-      if (!res.ok) {
-        showToast(data.error ?? "Không thể tải ví dụ", "error");
-        return;
-      }
-      setExamples(data.examples ?? []);
-    } catch {
-      showToast("Không thể tải ví dụ", "error");
-    } finally {
-      setLoadingExamples(false);
+  useEffect(() => {
+    function syncSettingsFromStorage() {
+      const value = localStorage.getItem(REVIEW_ILLUSTRATION_AFTER_ANSWER_KEY);
+      setShowIllustrationAfterAnswer(value === "1");
     }
-  }
 
-  async function generateExamples(cardId: string) {
-    try {
-      setGeneratingExamples(true);
-      const res = await fetch(`/api/vocabulary/${cardId}/examples/generate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ forceRefresh: examples.length > 0 }),
-      });
-      const data = (await res.json()) as { examples?: VocabularyExample[]; error?: string };
-      if (!res.ok) {
-        showToast(data.error ?? "Không thể tạo ví dụ", "error");
-        return;
-      }
-      setExamples(data.examples ?? []);
-      showToast("Đã tạo ví dụ", "success");
-    } catch {
-      showToast("Không thể tạo ví dụ", "error");
-    } finally {
-      setGeneratingExamples(false);
-    }
-  }
+    syncSettingsFromStorage();
+    window.addEventListener("app-settings-change", syncSettingsFromStorage);
+    window.addEventListener("storage", syncSettingsFromStorage);
+
+    return () => {
+      window.removeEventListener("app-settings-change", syncSettingsFromStorage);
+      window.removeEventListener("storage", syncSettingsFromStorage);
+    };
+  }, []);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -340,6 +331,7 @@ export default function ReviewPage() {
       if (e.code === "Space") {
         e.preventDefault();
         if (!showAnswer) {
+          playClickButtonSound();
           setShowAnswer(true);
           if (currentCard) {
             speakEnglish(currentCard.word);
@@ -356,7 +348,10 @@ export default function ReviewPage() {
           Digit4: "easy",
         };
         const rating = keyMap[e.code];
-        if (rating) handleFlashcardRate(rating);
+        if (rating) {
+          playClickButtonSound();
+          handleFlashcardRate(rating);
+        }
       }
     },
     [showAnswer, sessionStarted, sessionItems, summary, currentItem, transitionPhase] // eslint-disable-line react-hooks/exhaustive-deps
@@ -366,6 +361,45 @@ export default function ReviewPage() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
+
+  useEffect(() => {
+    if (!showIllustration || !currentCard) return;
+
+    const key = normalizeIllustrationKey(currentCard.word);
+    if (key in illustrationCache) return;
+
+    const controller = new AbortController();
+    setLoadingIllustrationKey(key);
+
+    const fetchIllustration = async () => {
+      try {
+        const params = new URLSearchParams({ word: currentCard.word });
+        const res = await fetch(`/api/vocabulary/images?${params.toString()}`, {
+          signal: controller.signal,
+          cache: "force-cache",
+        });
+        const data = (await res.json().catch(() => ({}))) as {
+          imageUrl?: string | null;
+        };
+        const imageUrl = typeof data.imageUrl === "string" ? data.imageUrl : null;
+        setIllustrationCache((prev) => ({ ...prev, [key]: imageUrl }));
+      } catch {
+        if (!controller.signal.aborted) {
+          setIllustrationCache((prev) => ({ ...prev, [key]: null }));
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoadingIllustrationKey((prev) => (prev === key ? null : prev));
+        }
+      }
+    };
+
+    void fetchIllustration();
+
+    return () => {
+      controller.abort();
+    };
+  }, [showIllustration, currentCard, illustrationCache]);
 
   function moveNext(resolvedRating: ReviewRating) {
     if (transitionPhase !== "idle") return;
@@ -402,8 +436,6 @@ export default function ReviewPage() {
 
       setCurrentIndex(nextIndex);
       setShowAnswer(false);
-      setShowExamples(false);
-      setExamples([]);
       if (sessionSource === "due") {
         const dueCacheKey = buildDueCacheKey(activeSessionSetIds ?? undefined);
         setClientCache(dueCacheKey, sessionItems.slice(nextIndex));
@@ -453,6 +485,21 @@ export default function ReviewPage() {
 
   function handleRestart() {
     loadSession("library-random", activeSessionSetIds ?? undefined);
+  }
+
+  function handleBackToSelection() {
+    clearTransitionTimer();
+    setSummary(null);
+    setSessionStarted(false);
+    setSessionItems([]);
+    setCurrentIndex(0);
+    setShowAnswer(false);
+    setTransitionPhase("idle");
+    setActiveSessionSetIds(null);
+    setSessionAttempted(false);
+    setShowIllustration(false);
+    setIllustrationCache({});
+    setLoadingIllustrationKey(null);
   }
 
   if (sessionLoading) {
@@ -647,7 +694,11 @@ export default function ReviewPage() {
   if (summary) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-8 page-enter">
-        <ReviewSummary summary={summary} onRestart={handleRestart} />
+        <ReviewSummary
+          summary={summary}
+          onRestart={handleRestart}
+          onBackToSelection={handleBackToSelection}
+        />
       </div>
     );
   }
@@ -663,9 +714,21 @@ export default function ReviewPage() {
           <ArrowLeft className="h-4 w-4" />
           Tổng quan
         </Link>
-        <p className="text-sm font-medium text-zinc-500">
-          Phiên ôn tập
-        </p>
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-medium text-zinc-500">Phiên ôn tập</p>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              playClickButtonSound();
+              setShowIllustration((prev) => !prev);
+            }}
+            className="h-8 rounded-full px-3 text-xs"
+          >
+            {showIllustration ? "Ẩn ảnh" : "Hiện ảnh"}
+          </Button>
+        </div>
       </div>
 
       <p
@@ -698,6 +761,9 @@ export default function ReviewPage() {
             <ReviewCard
               card={currentCard}
               showAnswer={showAnswer}
+              showIllustration={shouldShowIllustrationForCurrentCard}
+              illustrationUrl={currentIllustrationUrl}
+              illustrationLoading={currentIllustrationLoading}
               onShowAnswer={() => {
                 if (transitionPhase !== "idle") return;
                 setShowAnswer(true);
@@ -706,82 +772,31 @@ export default function ReviewPage() {
             />
           </div>
           {showAnswer && (
-            <>
-              <div className={transitionPhase === "out" ? "review-actions-fall-out" : ""}>
-                <ReviewActions onRate={handleFlashcardRate} />
-              </div>
-              <div className={`mt-6 w-full max-w-2xl mx-auto ${transitionPhase === "out" ? "review-examples-out" : ""}`}>
-                <button
-                  onClick={async () => {
-                    const next = !showExamples;
-                    setShowExamples(next);
-                    if (next && examples.length === 0) {
-                      await loadExamples(currentCard.id);
-                    }
-                  }}
-                  className="text-sm text-violet-600 hover:text-violet-700 font-medium"
-                >
-                  {showExamples ? "Ẩn ví dụ" : "Hiện ví dụ"}
-                </button>
-
-                {showExamples && (
-                  <div className="mt-3 rounded-2xl border border-zinc-100 bg-white p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <p className="text-sm font-semibold text-zinc-700 flex items-center gap-1.5">
-                        <BookOpenText className="h-4 w-4" />
-                        Câu ví dụ
-                      </p>
-                      <Button size="sm" variant="outline" onClick={() => generateExamples(currentCard.id)} disabled={generatingExamples}>
-                        {generatingExamples ? "Đang tạo..." : "Tạo ví dụ"}
-                      </Button>
-                    </div>
-                    {loadingExamples ? <p className="text-sm text-zinc-400">Đang tải...</p> : <ExampleList examples={examples} />}
-                  </div>
-                )}
-              </div>
-            </>
+            <div className={transitionPhase === "out" ? "review-actions-fall-out" : ""}>
+              <ReviewActions onRate={handleFlashcardRate} />
+            </div>
           )}
         </>
       ) : (
-        <>
-          <div
-            key={currentCard.id}
-            className={
-              transitionPhase === "out"
-                ? "review-card-swipe-out"
-                : transitionPhase === "in"
-                  ? "review-card-swipe-in"
-                  : ""
-            }
-          >
-            <TypingReviewCard
-              card={currentCard}
-              onSubmit={handleTypingSubmit}
-              focusAfterMs={transitionPhase === "in" ? CARD_SWIPE_IN_MS + 40 : 0}
-            />
-          </div>
-          <div className={`mt-6 w-full max-w-2xl mx-auto rounded-2xl border border-zinc-100 bg-white p-4 ${transitionPhase === "out" ? "review-examples-out" : ""}`}>
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-sm font-semibold text-zinc-700 flex items-center gap-1.5">
-                <BookOpenText className="h-4 w-4" />
-                Câu ví dụ
-              </p>
-              <Button size="sm" variant="outline" onClick={() => generateExamples(currentCard.id)} disabled={generatingExamples}>
-                {generatingExamples ? "Đang tạo..." : "Tạo ví dụ"}
-              </Button>
-            </div>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="mb-2"
-              onClick={() => loadExamples(currentCard.id)}
-              disabled={loadingExamples}
-            >
-              {loadingExamples ? "Đang tải..." : "Tải ví dụ"}
-            </Button>
-            <ExampleList examples={examples} />
-          </div>
-        </>
+        <div
+          key={currentCard.id}
+          className={
+            transitionPhase === "out"
+              ? "review-card-swipe-out"
+              : transitionPhase === "in"
+                ? "review-card-swipe-in"
+                : ""
+          }
+        >
+          <TypingReviewCard
+            card={currentCard}
+            showIllustration={shouldShowIllustrationForCurrentCard}
+            illustrationUrl={currentIllustrationUrl}
+            illustrationLoading={currentIllustrationLoading}
+            onSubmit={handleTypingSubmit}
+            focusAfterMs={transitionPhase === "in" ? CARD_SWIPE_IN_MS + 40 : 0}
+          />
+        </div>
       )}
     </div>
   );

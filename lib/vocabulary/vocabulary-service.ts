@@ -5,7 +5,6 @@ import {
   studyStats,
   vocabularyCardSets,
   vocabularyCards,
-  vocabularyExamples,
   vocabularySets,
 } from "@/db/schema";
 import {
@@ -14,15 +13,12 @@ import {
   ReviewSessionItem,
   StudyStats,
   VocabularyCard,
-  VocabularyExample,
   VocabularySet,
 } from "@/types/vocab";
 import { applyReview, createNewCard, isTypingEligible } from "@/lib/srs/spaced-repetition";
-import { generateExamplesForWord } from "@/lib/vocabulary/examples-service";
 import { todayString } from "@/lib/utils/date";
 
 type CardRow = typeof vocabularyCards.$inferSelect;
-type ExampleRow = typeof vocabularyExamples.$inferSelect;
 type SetRow = typeof vocabularySets.$inferSelect;
 
 type ImportInput = { word: string; meaning: string };
@@ -114,17 +110,6 @@ function mapSet(row: SetRow & { cardCount?: number; dueCount?: number }): Vocabu
     coverImagePublicId: row.coverImagePublicId ?? null,
     cardCount: Number(row.cardCount ?? 0),
     dueCount: Number(row.dueCount ?? 0),
-  };
-}
-
-function mapExample(row: ExampleRow): VocabularyExample {
-  return {
-    id: row.id,
-    cardId: row.cardId,
-    sentence: row.sentence,
-    translation: row.translation,
-    source: row.source,
-    createdAt: row.createdAt.toISOString(),
   };
 }
 
@@ -550,27 +535,42 @@ export async function resetVocabularyCard(cardId: string): Promise<VocabularyCar
 }
 
 export async function getDashboardSummary(): Promise<DashboardSummary> {
-  const cards = await getLibraryCards();
+  const db = getDb();
   const stats = await getStudyStats();
   const today = new Date();
   const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
-  const db = getDb();
+  const summaryRows = await db
+    .select({
+      totalCards: count(vocabularyCards.id),
+      newCards: sql<number>`COALESCE(SUM(CASE WHEN ${vocabularyCards.status} = 'new' THEN 1 ELSE 0 END), 0)`,
+      dueToday:
+        sql<number>`COALESCE(SUM(CASE WHEN ${vocabularyCards.dueDate} <= NOW() AND ${vocabularyCards.status} <> 'mastered' THEN 1 ELSE 0 END), 0)`,
+      masteredCards:
+        sql<number>`COALESCE(SUM(CASE WHEN ${vocabularyCards.status} = 'mastered' THEN 1 ELSE 0 END), 0)`,
+      learningCards:
+        sql<number>`COALESCE(SUM(CASE WHEN ${vocabularyCards.status} = 'learning' THEN 1 ELSE 0 END), 0)`,
+      reviewCards:
+        sql<number>`COALESCE(SUM(CASE WHEN ${vocabularyCards.status} = 'review' THEN 1 ELSE 0 END), 0)`,
+      typingEligible:
+        sql<number>`COALESCE(SUM(CASE WHEN ${vocabularyCards.typingEnabled} = true OR ${vocabularyCards.repetition} >= 4 OR ${vocabularyCards.status} = 'mastered' THEN 1 ELSE 0 END), 0)`,
+    })
+    .from(vocabularyCards);
+
   const reviewedTodayResult = await db
     .select({ count: sql<number>`count(*)` })
     .from(reviewLogs)
     .where(gte(reviewLogs.reviewedAt, startOfDay));
-
-  const dueToday = cards.filter((c) => new Date(c.dueDate) <= today && c.status !== "mastered").length;
+  const summary = summaryRows[0];
 
   return {
-    totalCards: cards.length,
-    newCards: cards.filter((c) => c.status === "new").length,
-    dueToday,
-    masteredCards: cards.filter((c) => c.status === "mastered").length,
-    learningCards: cards.filter((c) => c.status === "learning").length,
-    reviewCards: cards.filter((c) => c.status === "review").length,
-    typingEligible: cards.filter((c) => isTypingEligible(c)).length,
+    totalCards: Number(summary?.totalCards ?? 0),
+    newCards: Number(summary?.newCards ?? 0),
+    dueToday: Number(summary?.dueToday ?? 0),
+    masteredCards: Number(summary?.masteredCards ?? 0),
+    learningCards: Number(summary?.learningCards ?? 0),
+    reviewCards: Number(summary?.reviewCards ?? 0),
+    typingEligible: Number(summary?.typingEligible ?? 0),
     reviewedToday: Number(reviewedTodayResult[0]?.count ?? 0),
     streak: stats.streak,
   };
@@ -915,46 +915,6 @@ export async function submitTypingReview(input: {
 
   await updateStudyStatsAfterReview();
   return { card: mapCard(updatedRows[0]), resolvedRating };
-}
-
-export async function getExamplesForCard(cardId: string): Promise<VocabularyExample[]> {
-  const db = getDb();
-  const rows = await db
-    .select()
-    .from(vocabularyExamples)
-    .where(eq(vocabularyExamples.cardId, cardId))
-    .orderBy(asc(vocabularyExamples.createdAt));
-  return rows.map(mapExample);
-}
-
-export async function generateExamplesForCard(cardId: string, forceRefresh = false) {
-  const db = getDb();
-  const cardRows = await db.select().from(vocabularyCards).where(eq(vocabularyCards.id, cardId)).limit(1);
-  const card = cardRows[0];
-  if (!card) throw new Error("Card not found");
-
-  if (forceRefresh) {
-    await db.delete(vocabularyExamples).where(eq(vocabularyExamples.cardId, cardId));
-  } else {
-    const existing = await getExamplesForCard(cardId);
-    if (existing.length > 0) return existing;
-  }
-
-  const generated = await generateExamplesForWord(card.word, card.meaning);
-  const inserted = await db
-    .insert(vocabularyExamples)
-    .values(
-      generated.map((item) => ({
-        cardId,
-        sentence: item.sentence,
-        translation: item.translation,
-        source: item.source,
-        createdAt: new Date(),
-      }))
-    )
-    .returning();
-
-  return inserted.map(mapExample);
 }
 
 export async function importLegacyData(input: {

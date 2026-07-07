@@ -4,10 +4,9 @@ import { useEffect, useState } from "react";
 import { useVocab } from "@/context/VocabContext";
 import { StatsOverview, StatusBreakdown } from "@/components/dashboard/StatsOverview";
 import { QuickActions } from "@/components/dashboard/QuickActions";
-import { DueCardsPanel } from "@/components/dashboard/DueCardsPanel";
 import { BookOpen } from "lucide-react";
 import Link from "next/link";
-import { DashboardSummary, ReviewSessionItem, VocabularyCard } from "@/types/vocab";
+import { DashboardSummary } from "@/types/vocab";
 import { DEMO_VOCABULARY } from "@/lib/utils/demo-data";
 import { migrateLegacyLocalData } from "@/lib/migrate-local-data";
 import { getClientCache, setClientCache } from "@/lib/utils/client-cache";
@@ -18,37 +17,28 @@ const DASHBOARD_CACHE_TTL = 90_000;
 export default function DashboardPage() {
   const { showToast } = useVocab();
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
-  const [dueCards, setDueCards] = useState<VocabularyCard[]>([]);
   const [loading, setLoading] = useState(true);
 
   async function loadDashboard() {
-    const cached = getClientCache<{ summary: DashboardSummary; dueCards: VocabularyCard[] }>(
+    const cached = getClientCache<{ summary: DashboardSummary }>(
       DASHBOARD_CACHE_KEY,
       DASHBOARD_CACHE_TTL
     );
 
     if (cached) {
       setSummary(cached.summary);
-      setDueCards(cached.dueCards);
       setLoading(false);
     }
 
     try {
       if (!cached) setLoading(true);
-      const [summaryRes, dueRes] = await Promise.all([
-        fetch("/api/dashboard/summary", { cache: "no-store" }),
-        fetch("/api/vocabulary/due", { cache: "no-store" }),
-      ]);
+      const summaryRes = await fetch("/api/dashboard/summary", { cache: "no-store" });
 
       const summaryData = (await summaryRes.json()) as DashboardSummary;
-      const dueData = (await dueRes.json()) as { items: ReviewSessionItem[] };
-      const nextDueCards = (dueData.items ?? []).map((item) => item.card);
 
       setSummary(summaryData);
-      setDueCards(nextDueCards);
       setClientCache(DASHBOARD_CACHE_KEY, {
         summary: summaryData,
-        dueCards: nextDueCards,
       });
     } catch {
       if (!cached) showToast("Không thể tải dữ liệu tổng quan", "error");
@@ -150,24 +140,21 @@ export default function DashboardPage() {
         <>
           <StatsOverview summary={summary} />
           <StatusBreakdown summary={summary} />
-          <div className="grid gap-6 lg:grid-cols-2">
-            <div className="space-y-4 animate-fade-up" style={{ animationDelay: "80ms", animationFillMode: "both" }}>
-              <h2 className="text-sm font-semibold text-zinc-500 uppercase tracking-wide">
-                Thao tac nhanh
-              </h2>
-              <QuickActions
-                dueCount={summary.dueToday}
-                hasCards={summary.totalCards > 0}
-                onLoadDemo={handleLoadDemo}
-              />
-              <button
-                onClick={handleMigrateLocal}
-                className="text-xs text-zinc-500 hover:text-violet-600 transition-colors"
-              >
-                Chuyển dữ liệu local cũ
-              </button>
-            </div>
-            <DueCardsPanel dueCards={dueCards} />
+          <div className="space-y-4 animate-fade-up" style={{ animationDelay: "80ms", animationFillMode: "both" }}>
+            <h2 className="text-sm font-semibold text-zinc-500 uppercase tracking-wide">
+              Thao tac nhanh
+            </h2>
+            <QuickActions
+              dueCount={summary.dueToday}
+              hasCards={summary.totalCards > 0}
+              onLoadDemo={handleLoadDemo}
+            />
+            <button
+              onClick={handleMigrateLocal}
+              className="text-xs text-zinc-500 hover:text-violet-600 transition-colors"
+            >
+              Chuyển dữ liệu local cũ
+            </button>
           </div>
         </>
       )}

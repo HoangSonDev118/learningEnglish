@@ -17,6 +17,7 @@ type VocabularyTableProps = {
   pageSize: number;
   totalPages: number;
   sets: VocabularySet[];
+  selectedSetId: string;
   onDelete: (card: VocabularyCard) => void;
   onPageChange: (page: number) => void;
   onUpdateCardSets: (card: VocabularyCard, setIds: string[]) => Promise<void>;
@@ -29,6 +30,7 @@ export function VocabularyTable({
   pageSize,
   totalPages,
   sets,
+  selectedSetId,
   onDelete,
   onPageChange,
   onUpdateCardSets,
@@ -40,6 +42,17 @@ export function VocabularyTable({
 
   const rangeStart = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const rangeEnd = Math.min(page * pageSize, total);
+
+  function getDisplaySetNames(card: VocabularyCard): string[] {
+    const setNames = card.setNames ?? [];
+    if (selectedSetId === "all") return setNames;
+
+    const paired = setNames.map((name, idx) => ({ name, setId: card.setIds?.[idx] ?? "" }));
+    return [
+      ...paired.filter((item) => item.setId === selectedSetId).map((item) => item.name),
+      ...paired.filter((item) => item.setId !== selectedSetId).map((item) => item.name),
+    ];
+  }
 
   function openSetEditor(card: VocabularyCard) {
     setEditingCard(card);
@@ -119,7 +132,7 @@ export function VocabularyTable({
                   </td>
                   <td className="px-4 py-3 hidden lg:table-cell">
                     <div className="flex flex-wrap items-center gap-1.5 max-w-72">
-                      {(card.setNames ?? []).slice(0, 2).map((name) => (
+                      {getDisplaySetNames(card).slice(0, 2).map((name) => (
                         <span
                           key={`${card.id}-${name}`}
                           className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-600"

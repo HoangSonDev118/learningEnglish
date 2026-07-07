@@ -63,18 +63,24 @@ export default function LibraryPage() {
       const nextSets = json.sets ?? [];
       setSets(nextSets);
 
-      if (selectedSetId !== "all" && !nextSets.some((item) => item.id === selectedSetId)) {
-        setSelectedSetId("all");
-      }
-      if (editingSetId && !nextSets.some((item) => item.id === editingSetId)) {
-        setEditingSetId("");
-        setEditingSetName("");
-      }
+      setSelectedSetId((prev) => {
+        if (prev !== "all" && !nextSets.some((item) => item.id === prev)) {
+          return "all";
+        }
+        return prev;
+      });
+      setEditingSetId((prev) => {
+        if (prev && !nextSets.some((item) => item.id === prev)) {
+          setEditingSetName("");
+          return "";
+        }
+        return prev;
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Không thể tải bộ từ";
       showToast(message, "error");
     }
-  }, [editingSetId, selectedSetId, showToast]);
+  }, [showToast]);
 
   const fetchPage = useCallback(
     async (p: number, q: string, f: Filter, setId: string) => {
@@ -159,14 +165,9 @@ export default function LibraryPage() {
         return;
       }
 
-      setData((prev) =>
-        prev
-          ? {
-              ...prev,
-              cards: prev.cards.map((item) => (item.id === card.id ? (json.card ?? item) : item)),
-            }
-          : prev
-      );
+      // Refetch current page to keep set-filter results accurate
+      // (a card may no longer belong to the currently selected set).
+      await fetchPage(page, search, filter, selectedSetId);
       await loadSets();
       showToast("Đã cập nhật bộ từ cho từ vựng", "success");
     } catch {
@@ -583,6 +584,7 @@ export default function LibraryPage() {
             pageSize={data.pageSize}
             totalPages={data.totalPages}
             sets={sets}
+            selectedSetId={selectedSetId}
             onDelete={handleDeleteCard}
             onPageChange={handlePageChange}
             onUpdateCardSets={handleUpdateCardSets}

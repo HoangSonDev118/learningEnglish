@@ -1,11 +1,10 @@
 "use client";
 
 import * as Dialog from "@radix-ui/react-dialog";
-import { useEffect, useState } from "react";
-import { VocabularyCard, VocabularyExample } from "@/types/vocab";
+import { useState } from "react";
+import { VocabularyCard } from "@/types/vocab";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ExampleList } from "@/components/vocabulary/ExampleList";
 import { formatRelativeDate } from "@/lib/utils/date";
 import { X, RotateCcw } from "lucide-react";
 import { useVocab } from "@/context/VocabContext";
@@ -19,32 +18,7 @@ type VocabularyDetailModalProps = {
 
 export function VocabularyDetailModal({ card, open, onOpenChange, onReset }: VocabularyDetailModalProps) {
   const { showToast } = useVocab();
-  const [examples, setExamples] = useState<VocabularyExample[]>([]);
-  const [loadingExamples, setLoadingExamples] = useState(false);
-  const [generating, setGenerating] = useState(false);
   const [resetting, setResetting] = useState(false);
-
-  useEffect(() => {
-    if (!card || !open) return;
-
-    let mounted = true;
-    setLoadingExamples(true);
-    fetch(`/api/vocabulary/${card.id}/examples`, { cache: "no-store" })
-      .then((res) => res.json())
-      .then((data) => {
-        if (mounted) setExamples((data.examples ?? []) as VocabularyExample[]);
-      })
-      .catch(() => {
-        if (mounted) setExamples([]);
-      })
-      .finally(() => {
-        if (mounted) setLoadingExamples(false);
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, [card, open]);
 
   async function handleReset() {
     if (!card) return;
@@ -65,30 +39,6 @@ export function VocabularyDetailModal({ card, open, onOpenChange, onReset }: Voc
       showToast("Không thể đặt lại từ vựng", "error");
     } finally {
       setResetting(false);
-    }
-  }
-
-  async function handleGenerate(forceRefresh = false) {
-    if (!card) return;
-
-    try {
-      setGenerating(true);
-      const res = await fetch(`/api/vocabulary/${card.id}/examples/generate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ forceRefresh }),
-      });
-      const data = (await res.json()) as { examples?: VocabularyExample[]; error?: string };
-      if (!res.ok) {
-        showToast(data.error ?? "Không thể tạo ví dụ", "error");
-        return;
-      }
-      setExamples(data.examples ?? []);
-      showToast("Đã tạo ví dụ", "success");
-    } catch {
-      showToast("Không thể tạo ví dụ", "error");
-    } finally {
-      setGenerating(false);
     }
   }
 
@@ -124,25 +74,6 @@ export function VocabularyDetailModal({ card, open, onOpenChange, onReset }: Voc
               </div>
             </div>
           )}
-
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-zinc-700">Câu ví dụ</h3>
-              <div className="flex gap-2">
-                {examples.length > 0 && (
-                  <Button size="sm" variant="outline" onClick={() => handleGenerate(true)} disabled={generating}>
-                    Làm mới ví dụ
-                  </Button>
-                )}
-                <Button size="sm" onClick={() => handleGenerate(false)} disabled={generating}>
-                  {generating ? "Đang tạo..." : examples.length > 0 ? "Tạo lại" : "Tạo ví dụ"}
-                </Button>
-              </div>
-            </div>
-
-            {loadingExamples ? <p className="text-sm text-zinc-400">Đang tải ví dụ...</p> : <ExampleList examples={examples} />}
-          </div>
-
           {card && (
             <div className="mt-6 border-t border-zinc-100 pt-4">
               <Button

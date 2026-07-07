@@ -7,9 +7,13 @@ import { Button } from "@/components/ui/button";
 import { isTypingAnswerCorrect } from "@/lib/srs/typing-review";
 import { speakEnglish } from "@/lib/utils/speech";
 import { playClickButtonSound, playEasySound, playClickAndEasyTogether } from "@/lib/utils/click-sound";
+import Image from "next/image";
 
 type TypingReviewCardProps = {
   card: VocabularyCard;
+  showIllustration: boolean;
+  illustrationUrl?: string | null;
+  illustrationLoading?: boolean;
   focusAfterMs?: number;
   onSubmit: (payload: {
     typedAnswer: string;
@@ -18,7 +22,14 @@ type TypingReviewCardProps = {
   }) => void | Promise<void>;
 };
 
-export function TypingReviewCard({ card, onSubmit, focusAfterMs = 0 }: TypingReviewCardProps) {
+export function TypingReviewCard({
+  card,
+  showIllustration,
+  illustrationUrl,
+  illustrationLoading,
+  onSubmit,
+  focusAfterMs = 0,
+}: TypingReviewCardProps) {
   const [answer, setAnswer] = useState("");
   const [checked, setChecked] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
@@ -134,6 +145,28 @@ export function TypingReviewCard({ card, onSubmit, focusAfterMs = 0 }: TypingRev
         {card.meaning}
       </h2>
 
+      {showIllustration ? (
+        <div className="mb-6 w-full overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-50">
+          {illustrationLoading ? (
+            <div className="h-56 w-full animate-pulse bg-zinc-200" />
+          ) : illustrationUrl ? (
+            <div className="flex h-56 w-full items-center justify-center">
+              <Image
+                src={illustrationUrl}
+                alt={`Minh họa cho từ ${card.word}`}
+                width={640}
+                height={320}
+                className="h-56 w-full object-cover object-center"
+              />
+            </div>
+          ) : (
+            <div className="flex h-56 items-center justify-center px-4 text-sm text-zinc-500">
+              Chưa có ảnh minh họa cho từ này
+            </div>
+          )}
+        </div>
+      ) : null}
+
       {!checked ? (
         <div className="min-h-36 animate-fade-up">
           {showTapToFocus && (
@@ -155,7 +188,10 @@ export function TypingReviewCard({ card, onSubmit, focusAfterMs = 0 }: TypingRev
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 e.preventDefault();
-                if (answer.trim()) checkAnswer();
+                if (answer.trim()) {
+                  playClickButtonSound();
+                  checkAnswer();
+                }
               }
             }}
           />

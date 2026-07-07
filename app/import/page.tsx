@@ -17,7 +17,7 @@ export default function ImportPage() {
         </Link>
         <h1 className="text-2xl font-bold text-zinc-900">Nhập từ vựng</h1>
         <p className="mt-1 text-sm text-zinc-500">
-          Tải lên file .txt/.xlsx hoặc nhập chay mỗi từ một dòng để thêm từ vựng. Khi nhập bắt buộc chọn bộ từ có sẵn hoặc tạo bộ từ mới.
+          Tải lên file .txt/.xlsx hoặc nhập mỗi từ một dòng để thêm từ vựng. Khi nhập bắt buộc chọn bộ từ có sẵn hoặc tạo bộ từ mới.
         </p>
       </div>
 

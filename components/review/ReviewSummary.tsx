@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { ReviewSessionSummary } from "@/types/vocab";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,9 +9,10 @@ import { playClickButtonSound } from "@/lib/utils/click-sound";
 type Props = {
   summary: ReviewSessionSummary;
   onRestart: () => void;
+  onBackToSelection: () => void;
 };
 
-export function ReviewSummary({ summary, onRestart }: Props) {
+export function ReviewSummary({ summary, onRestart, onBackToSelection }: Props) {
 
   return (
     <div className="relative z-10 flex min-h-[60vh] flex-col items-center justify-center px-4 page-enter">
@@ -49,12 +49,17 @@ export function ReviewSummary({ summary, onRestart }: Props) {
       </div>
 
       <div className="mt-6 flex gap-3">
-        <Link href="/">
-          <Button variant="outline" className="gap-2 bg-white hover:bg-zinc-100" onClick={playClickButtonSound}>
-            <ArrowLeft className="h-4 w-4" />
-            Tổng quan
-          </Button>
-        </Link>
+        <Button
+          variant="outline"
+          className="gap-2 bg-white hover:bg-zinc-100"
+          onClick={() => {
+            playClickButtonSound();
+            onBackToSelection();
+          }}
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Chọn danh sách ôn tập
+        </Button>
         <Button
           onClick={() => {
             playClickButtonSound();

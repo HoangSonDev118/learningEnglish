@@ -6,14 +6,25 @@ import { Eye, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { playClickButtonSound } from "@/lib/utils/click-sound";
 import { speakEnglish } from "@/lib/utils/speech";
+import Image from "next/image";
 
 type Props = {
   card: VocabularyCard;
   showAnswer: boolean;
+  showIllustration: boolean;
+  illustrationUrl?: string | null;
+  illustrationLoading?: boolean;
   onShowAnswer: () => void;
 };
 
-export function ReviewCard({ card, showAnswer, onShowAnswer }: Props) {
+export function ReviewCard({
+  card,
+  showAnswer,
+  showIllustration,
+  illustrationUrl,
+  illustrationLoading,
+  onShowAnswer,
+}: Props) {
   return (
     <div className="w-full max-w-2xl mx-auto">
       <div
@@ -40,6 +51,28 @@ export function ReviewCard({ card, showAnswer, onShowAnswer }: Props) {
           <p className="mt-3 text-sm text-zinc-400">
             lần lặp #{card.repetition} · khoảng {card.interval} ngày
           </p>
+
+          {showIllustration ? (
+            <div className="mt-5 w-full max-w-md overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-50">
+              {illustrationLoading ? (
+                <div className="h-56 w-full animate-pulse bg-zinc-200" />
+              ) : illustrationUrl ? (
+                <div className="flex h-56 w-full items-center justify-center">
+                  <Image
+                    src={illustrationUrl}
+                    alt={`Minh họa cho từ ${card.word}`}
+                    width={640}
+                    height={360}
+                    className="h-56 w-full object-cover object-center"
+                  />
+                </div>
+              ) : (
+                <div className="flex h-56 items-center justify-center px-4 text-sm text-zinc-500">
+                  Chưa có ảnh minh họa cho từ này
+                </div>
+              )}
+            </div>
+          ) : null}
         </div>
 
         {/* Answer section */}
