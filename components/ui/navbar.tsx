@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { BookOpen, LayoutDashboard, Library, Moon, Settings2, Sun, Upload } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
@@ -22,6 +23,7 @@ export function Navbar() {
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showIllustrationAfterAnswer, setShowIllustrationAfterAnswer] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const settingsRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -32,11 +34,13 @@ export function Navbar() {
     setTheme(nextTheme);
     document.documentElement.classList.toggle("theme-dark", nextTheme === "dark");
     setShowIllustrationAfterAnswer(storedIllustrationSetting === "1");
+    setMounted(true);
   }, []);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (!settingsOpen) return;
+      if (!window.matchMedia("(min-width: 640px)").matches) return;
       if (!settingsRef.current) return;
       if (!settingsRef.current.contains(event.target as Node)) {
         setSettingsOpen(false);
@@ -62,6 +66,18 @@ export function Navbar() {
   useEffect(() => {
     setSettingsOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    if (!settingsOpen) return;
+    if (window.matchMedia("(min-width: 640px)").matches) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [settingsOpen]);
 
   function toggleTheme() {
     const nextTheme = theme === "dark" ? "light" : "dark";
@@ -221,10 +237,20 @@ export function Navbar() {
               </label>
             </div>
 
+          </div>
+        </nav>
+      </div>
+      {mounted &&
+        createPortal(
+          <>
             <button
               type="button"
               aria-label="Đóng cài đặt"
-              onClick={() => setSettingsOpen(false)}
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                setSettingsOpen(false);
+              }}
               className={cn(
                 "fixed inset-0 z-40 bg-black/30 transition-opacity duration-200 sm:hidden",
                 settingsOpen ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
@@ -291,9 +317,9 @@ export function Navbar() {
                 </span>
               </label>
             </div>
-          </div>
-        </nav>
-      </div>
+          </>,
+          document.body
+        )}
     </header>
   );
 }

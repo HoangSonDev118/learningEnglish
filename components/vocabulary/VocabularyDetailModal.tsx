@@ -6,8 +6,10 @@ import { VocabularyCard } from "@/types/vocab";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatRelativeDate } from "@/lib/utils/date";
-import { X, RotateCcw } from "lucide-react";
+import { X, RotateCcw, Volume2 } from "lucide-react";
 import { useVocab } from "@/context/VocabContext";
+import { speakEnglish } from "@/lib/utils/speech";
+import { playClickButtonSound } from "@/lib/utils/click-sound";
 
 type VocabularyDetailModalProps = {
   card: VocabularyCard | null;
@@ -49,7 +51,23 @@ export function VocabularyDetailModal({ card, open, onOpenChange, onReset }: Voc
         <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[95vw] max-w-2xl -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-zinc-100 bg-white p-6 shadow-xl max-h-[85vh] overflow-y-auto">
           <div className="flex items-start justify-between gap-4 mb-5">
             <div>
-              <Dialog.Title className="text-xl font-bold text-zinc-900">{card?.word}</Dialog.Title>
+              <Dialog.Title className="flex items-center gap-2 text-xl font-bold text-zinc-900">
+                <span>{card?.word}</span>
+                {card?.word ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playClickButtonSound();
+                      speakEnglish(card.word);
+                    }}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-600 transition-colors hover:bg-zinc-50 hover:text-zinc-800"
+                    aria-label={`Phát âm từ ${card.word}`}
+                    title="Phát âm"
+                  >
+                    <Volume2 className="h-4 w-4" />
+                  </button>
+                ) : null}
+              </Dialog.Title>
               <Dialog.Description className="text-sm text-zinc-500 mt-1">{card?.meaning}</Dialog.Description>
             </div>
             <Dialog.Close asChild>
